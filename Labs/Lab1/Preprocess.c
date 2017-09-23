@@ -9,13 +9,13 @@ struct equTab {
 	struct equTab *next;
 };
 
-void getLine(FILE *fp, char *lineBuffer);
+int getLine(FILE *fp, char *lineBuffer);
 void getToken(char *lineBuffer, char *tokenBuffer);
 
 int main() {
 
 	char line[501], token[101];
-	char filename[] = "TestFiles/bin.asm";
+	char filename[] = "TestFiles/SB_test_getline.asm";
 	FILE *fp;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
@@ -23,7 +23,9 @@ int main() {
         exit(1);
     }
 
-    getLine(fp, line);
+    while (getLine(fp, line)) {
+    	;
+    }
 
     if (fclose(fp) == 0) {
     	printf("\nFile closed.");
@@ -33,7 +35,7 @@ int main() {
     return 0;
 }
 
-void getLine(FILE *fp, char *lineBuffer) {
+int getLine(FILE *fp, char *lineBuffer) {
 
 	char c;
 	int n = 0;
@@ -45,9 +47,9 @@ void getLine(FILE *fp, char *lineBuffer) {
 				c = fgetc(fp);
 			}
 		}
-		if ((lineBuffer[n - 1] = ' ') && (n != 0)) {
-			// Ignores blanks in line
-			while ((c == ' ') || (c == '\t')) {
+		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
+			// Ignores useless blanks in line
+			while ((c == ' ') || (c == '\t') ) {
 				c = fgetc(fp);
 			}
 		}
@@ -63,6 +65,12 @@ void getLine(FILE *fp, char *lineBuffer) {
 		lineBuffer[++n] = '\0';		
 	}
 
+	if (c == EOF) {
+		return 0;
+	}
+	else {
+		return 1;
+	}
 }
 
 void getToken(char *lineBuffer, char *tokenBuffer) {

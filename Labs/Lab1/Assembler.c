@@ -35,12 +35,6 @@ struct symTab {
 	struct symTab *next;
 };
 
-struct equTab {
-	char label[101];
-	int value;
-	struct equTab *next;
-};
-
 struct instTab **createInsts();
 void openFile(char *filename);
 
