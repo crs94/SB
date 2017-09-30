@@ -5,12 +5,14 @@
 
 struct equTab {
 	char label[101];
-	int value;
+	char value[101];
 	struct equTab *next;
 };
 
 int getLine(FILE *fp, char *lineBuffer);
 int getToken(char *lineBuffer, char *tokenBuffer, int p);
+int isLabel(char *token);
+void addEQU(struct equTab *table, char *label, char *digit);
 
 int main() {
 
@@ -19,6 +21,7 @@ int main() {
 	char *tokens[5] = {token1, token2, token3, token4, token5};
 	FILE *fp;
 	int linePos = 0, i = 0;
+	struct equTab *equTable = NULL;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
         printf("404 Not Found!");
@@ -26,13 +29,18 @@ int main() {
     }
 
     while (getLine(fp, line)) {
-    	while (linePos = getToken(line, tokens[i], linePos)) {
-    		//printf("%d stuck here?", linePos);
-	    	printf("%s\n", tokens[i]);
-    		i++;
-    	}
+    	if (strstr(line, " EQU ")) {
+    		printf("found EQU");
+			while (linePos = getToken(line, tokens[i], linePos)) {
+		    	printf("%s\n", tokens[i]);
+	    		i++;
+	    	}
+	    	if (isLabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0 && isdigit(tokens[2])) {
+	    		addEQU(equTable, tokens[0], tokens[2]);
+	    	}
+	    }
+	    else printf("no EQU");
     	i = 0;
-    	//printf("finished line!");
     }
 
     if (fclose(fp) == 0) {
@@ -72,6 +80,8 @@ int getLine(FILE *fp, char *lineBuffer) {
 		n++;
 	}
 	if (c == ';') {
+		// If a comment is identified,
+		// the rest of the line is ignored
 		while ((c = fgetc(fp)) != '\n');
 	}
 	lineBuffer[n] = '\n';		
@@ -79,12 +89,8 @@ int getLine(FILE *fp, char *lineBuffer) {
 	
 	printf("%s", lineBuffer);
 
-	if (c != EOF) {
-		return 1;
-	}
-	else {
-		return 0;
-	}
+	if (c != EOF) return 1;
+	else return 0;
 }
 
 int getToken(char *lineBuffer, char *tokenBuffer, int p) {
@@ -98,15 +104,32 @@ int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 	}
 	tokenBuffer[n] = '\0';
 
-	if (lineBuffer[p] == '\n') {
-		return 0;
-	}
+	if (lineBuffer[p] == '\n') return 0;
 	p++;
 	return p;
 }
 
-/*void clearArray(char *buffer) {
+int isLabel(char *token) {
 
-	for (int n = 0; n <= )
+	int i = 0;
 
-}*/
+	while (token[i] != '\0') i++;
+
+	if (token[i - 1] == ':') return 1;
+	else return 0;
+}
+
+void addEQU(struct equTab *table, char *name, char *digit) {
+
+	struct equTab* tmp = table->next;
+	struct equTab* new = (struct equTab*)malloc(sizeof(struct equTab));
+	strcpy(new->label, name);
+	strcpy(new->value, digit);
+	new->next = NULL;
+
+	while (tmp != NULL) {
+		tmp = tmp->next;
+	}
+
+	tmp->next = new;
+}
