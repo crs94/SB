@@ -43,30 +43,40 @@ int getLine(FILE *fp, char *lineBuffer) {
 	char c;
 	int n = 0;
 
-	while (((c = fgetc(fp)) != '\n') && (n <= 499) && (c != EOF)) {
-		if (n == 0) {
-			// Ignores initial blanks
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
+	do {
+		while (((c = fgetc(fp)) != '\n') && (n <= 499) && (c != EOF)) {
+			if (n == 0) {
+				// Ignores initial blanks
+				while ((c == ' ') || (c == '\t')) {
+					c = fgetc(fp);
+				}
+			}
+			if (c != ';') {
+				if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
+					// Ignores useless blanks in line
+					while ((c == ' ') || (c == '\t')) {
+						c = fgetc(fp);
+					}
+				}
+				if (islower(c)) {
+					// Converts char to upper case
+					c = toupper(c);
+				}
+				lineBuffer[n] = c;
+				n++;
+			}
+			else {
+				while (((c = fgetc(fp)) != '\n') && (c != EOF)) {
+					;
+				}
 			}
 		}
-		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
-			// Ignores useless blanks in line
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
-			}
+		if (n <= 499) {
+			lineBuffer[n] = '\n';		
+			lineBuffer[++n] = '\0';
 		}
-		if (islower(c)) {
-			c = toupper(c);
-		}
-		lineBuffer[n] = c;
-		n++;
-	}
-	if (n <= 499) {
-		lineBuffer[n] = '\n';		
-		lineBuffer[++n] = '\0';
-	}
-	//printf("%s\n", lineBuffer);
+		//printf("stuck here?");
+	} while ((lineBuffer[0] == '\n') && (c != EOF));
 
 	if (c != EOF) {
 		return 1;
