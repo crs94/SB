@@ -1,4 +1,4 @@
-#pragma warning(disable: 4996)
+//#pragma warning(disable: 4996)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +11,10 @@ struct equTab {
 
 int getLine(FILE *fp, char *lineBuffer);
 int getToken(char *lineBuffer, char *tokenBuffer, int p);
-int isLabel(char *token);
+int isEQULabel(char *token);
+int replaceEQU(struct equTab *table, char *token);
 void addEQU(struct equTab *table, char *label, char *digit);
+void deleteEQU(struct equTab *table);
 
 int main() {
 
@@ -35,7 +37,7 @@ int main() {
 		    	printf("%s\n", tokens[i]);
 	    		i++;
 	    	}
-	    	if (isLabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0 && isdigit(tokens[2])) {
+	    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0 && isdigit(tokens[2])) {
 	    		addEQU(equTable, tokens[0], tokens[2]);
 	    	}
 	    }
@@ -52,6 +54,8 @@ int main() {
 }
 
 int getLine(FILE *fp, char *lineBuffer) {
+    // TODO Treat the case in which a label and the instruction
+    //      are in different lines
 
 	char c;
 	int n = 0;
@@ -84,9 +88,9 @@ int getLine(FILE *fp, char *lineBuffer) {
 		// the rest of the line is ignored
 		while ((c = fgetc(fp)) != '\n');
 	}
-	lineBuffer[n] = '\n';		
+	lineBuffer[n] = '\n';
 	lineBuffer[++n] = '\0';
-	
+
 	printf("%s", lineBuffer);
 
 	if (c != EOF) return 1;
@@ -96,7 +100,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	int n = 0;
-	
+
 	while ((!isspace(lineBuffer[p])) && (n < 101)) {
 		tokenBuffer[n] = lineBuffer[p];
 		n++;
@@ -109,7 +113,7 @@ int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 	return p;
 }
 
-int isLabel(char *token) {
+int isEQULabel(char *token) {
 
 	int i = 0;
 
@@ -117,6 +121,18 @@ int isLabel(char *token) {
 
 	if (token[i - 1] == ':') return 1;
 	else return 0;
+}
+
+int replaceEQU(struct equTab *table, char *token) {
+
+    struct equTab* tmp = table->next;
+    while (tmp != NULL) {
+        if (strcmp(tmp->label, token)) {
+            strcpy(token, tmp->value);
+            return 1;
+        }
+    }
+    return 0; // Label not defined(?)
 }
 
 void addEQU(struct equTab *table, char *name, char *digit) {
@@ -132,4 +148,15 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 	}
 
 	tmp->next = new;
+}
+
+void deleteEQU(struct equTab *table) {
+
+    struct equTab* tmp = table->next;
+    if (tmp != NULL) {
+        do {
+            free(table);
+            table = tmp;
+        } while ((tmp = table->next) != NULL);
+    }
 }
