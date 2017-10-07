@@ -32,27 +32,31 @@ int main() {
     }
 
     while (getLine(fp, line)) {
+    	lineOut[0] = '\0';
     	if (strstr(line, " EQU ")) {
-    		printf("found EQU");
 			while ((linePos = getToken(line, tokens[i], linePos)) && (i < 7)) {
-		    	printf("%s\n", tokens[i]);
 	    		i++;
 	    	}
 	    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0) {
+	    		printf("isEQU ");
 	    		addEQU(equTable, tokens[0], tokens[2]);
 	    	}
 
 	    }
 	    else {
     		while (linePos = getToken(line, tokens[0], linePos)) {
-    			searchEQU(equTable, tokens[0]);
+    			if (searchEQU(equTable, tokens[0])) {
+    				printf("found in table\t");
+    			}
     			strcat(lineOut, tokens[0]);
     			strcat(lineOut, " ");
     		}
+		    printf("%s\n", lineOut);
     	}
     	i = 0;
     }
 
+    deleteEQU(equTable);
     if (fclose(fp) == 0) {
     	printf("\nFile closed.");
     }
@@ -162,7 +166,7 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 		tmp = tmp->next;
 	}
 
-	tmp->next = new;
+	tmp = new;
 }
 
 void deleteEQU(struct equTab *table) {
