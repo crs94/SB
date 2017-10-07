@@ -41,6 +41,7 @@ int main() {
 	    		printf("isEQU ");
 	    		addEQU(equTable, tokens[0], tokens[2]);
 	    	}
+	    	printf("%s\n",equTable->label);
 
 	    }
 	    else {
@@ -139,7 +140,8 @@ int searchEQU(struct equTab *table, char *token) {
 
     struct equTab* tmp = table;
     while ((tmp != NULL)) {
-        if (strcmp(tmp->label, token)) {
+    	printf("I'm here!\n");
+        if (!strcmp(tmp->label, token)) {
         	strcpy(token, tmp->value);
         	return 1;
         }
@@ -162,11 +164,16 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 	strcpy(new->value, digit);
 	new->next = NULL;
 
-	while (tmp != NULL) {
-		tmp = tmp->next;
+	if(table==NULL) {
+		printf("first!");
+		table = new;
 	}
-
-	tmp = new;
+	else {
+		while (tmp != NULL) {
+			tmp = tmp->next;
+		}
+		tmp->next = new;
+	}
 }
 
 void deleteEQU(struct equTab *table) {
