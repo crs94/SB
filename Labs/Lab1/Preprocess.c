@@ -1,4 +1,4 @@
-//#pragma warning(disable: 4996)
+#pragma warning(disable: 4996)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,10 +18,11 @@ void deleteEQU(struct equTab *table);
 
 int main() {
 
-	char line[501], token1[101], token2[101], token3[101], token4[101], token5[101];
+	char line[601], lineOut[601];
+	char token1[101], token2[101], token3[101], token4[101], token5[101], token6[101], token7[101];
+	char *tokens[7] = {token1, token2, token3, token4, token5, token6, token7};
 	char filename[] = "TestFiles/SB_test_getline.asm";
-	char *tokens[5] = {token1, token2, token3, token4, token5};
-	FILE *fp;
+	FILE *fp = NULL;
 	int linePos = 0, i = 0;
 	struct equTab *equTable = NULL;
 
@@ -33,15 +34,22 @@ int main() {
     while (getLine(fp, line)) {
     	if (strstr(line, " EQU ")) {
     		printf("found EQU");
-			while (linePos = getToken(line, tokens[i], linePos)) {
+			while ((linePos = getToken(line, tokens[i], linePos)) && (i < 7)) {
 		    	printf("%s\n", tokens[i]);
 	    		i++;
 	    	}
-	    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0 && isdigit(tokens[2])) {
+	    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0) {
 	    		addEQU(equTable, tokens[0], tokens[2]);
 	    	}
+
 	    }
-	    else printf("no EQU");
+	    else {
+    		while (linePos = getToken(line, tokens[0], linePos)) {
+    			searchEQU(equTable, tokens[0]);
+    			strcat(lineOut, tokens[0]);
+    			strcat(lineOut, " ");
+    		}
+    	}
     	i = 0;
     }
 
@@ -123,23 +131,30 @@ int isEQULabel(char *token) {
 	else return 0;
 }
 
-int replaceEQU(struct equTab *table, char *token) {
+int searchEQU(struct equTab *table, char *token) {
 
-    struct equTab* tmp = table->next;
-    while (tmp != NULL) {
+    struct equTab* tmp = table;
+    while ((tmp != NULL)) {
         if (strcmp(tmp->label, token)) {
-            strcpy(token, tmp->value);
-            return 1;
+        	strcpy(token, tmp->value);
+        	return 1;
         }
+        tmp = tmp->next;
     }
     return 0; // Label not defined(?)
 }
 
 void addEQU(struct equTab *table, char *name, char *digit) {
 
-	struct equTab* tmp = table->next;
+	struct equTab* tmp = table;
+	int i = 0;
 	struct equTab* new = (struct equTab*)malloc(sizeof(struct equTab));
-	strcpy(new->label, name);
+	for (i = 0; i < strlen(name); i++) {
+		if (name[i] == ':') {
+			new->label[i] = '\0';
+		}
+		else new->label[i] = name[i];
+	}
 	strcpy(new->value, digit);
 	new->next = NULL;
 
@@ -152,7 +167,7 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 
 void deleteEQU(struct equTab *table) {
 
-    struct equTab* tmp = table->next;
+    struct equTab* tmp = table;
     if (tmp != NULL) {
         do {
             free(table);
