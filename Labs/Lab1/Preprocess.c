@@ -12,8 +12,8 @@ struct equTab {
 int getLine(FILE *fp, char *lineBuffer);
 int getToken(char *lineBuffer, char *tokenBuffer, int p);
 int isEQULabel(char *token);
-int replaceEQU(struct equTab *table, char *token);
-void addEQU(struct equTab *table, char *label, char *digit);
+int searchEQU(struct equTab *table, char *token);
+void addEQU(struct equTab **table, char *label, char *digit);
 void deleteEQU(struct equTab *table);
 
 int main() {
@@ -24,7 +24,7 @@ int main() {
 	char filename[] = "TestFiles/SB_test_getline.asm";
 	FILE *fp = NULL;
 	int linePos = 0, i = 0;
-	struct equTab *equTable = NULL;
+	struct equTab *equTable_Head = NULL;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
         printf("404 Not Found!");
@@ -38,16 +38,16 @@ int main() {
 	    		i++;
 	    	}
 	    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0) {
-	    		printf("isEQU ");
-	    		addEQU(equTable, tokens[0], tokens[2]);
+	    		printf("isEQU\n ");
+	    		addEQU(&equTable_Head, tokens[0], tokens[2]);
 	    	}
-	    	printf("%s\n",equTable->label);
+	    	//printf("%s\n",equTable->label);
 
 	    }
 	    else {
     		while (linePos = getToken(line, tokens[0], linePos)) {
-    			if (searchEQU(equTable, tokens[0])) {
-    				printf("found in table\t");
+    			if (searchEQU(equTable_Head, tokens[0])) {
+    				printf("found in table\n");
     			}
     			strcat(lineOut, tokens[0]);
     			strcat(lineOut, " ");
@@ -57,7 +57,7 @@ int main() {
     	i = 0;
     }
 
-    deleteEQU(equTable);
+    deleteEQU(equTable_Head);
     if (fclose(fp) == 0) {
     	printf("\nFile closed.");
     }
@@ -150,9 +150,9 @@ int searchEQU(struct equTab *table, char *token) {
     return 0; // Label not defined(?)
 }
 
-void addEQU(struct equTab *table, char *name, char *digit) {
+void addEQU(struct equTab **table, char *name, char *digit) {
 
-	struct equTab* tmp = table;
+	//struct equTab* tmp = table;
 	int i = 0;
 	struct equTab* new = (struct equTab*)malloc(sizeof(struct equTab));
 	for (i = 0; i < strlen(name); i++) {
@@ -162,9 +162,10 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 		else new->label[i] = name[i];
 	}
 	strcpy(new->value, digit);
-	new->next = NULL;
+	new->next = *table;
+	*table = new;
 
-	if(table==NULL) {
+	/*if(table==NULL) {
 		printf("first!");
 		table = new;
 	}
@@ -173,16 +174,15 @@ void addEQU(struct equTab *table, char *name, char *digit) {
 			tmp = tmp->next;
 		}
 		tmp->next = new;
-	}
+	}*/
 }
 
 void deleteEQU(struct equTab *table) {
 
-    struct equTab* tmp = table;
-    if (tmp != NULL) {
-        do {
-            free(table);
-            table = tmp;
-        } while ((tmp = table->next) != NULL);
+    struct equTab* tmp;
+    while(table != NULL) {
+    	tmp = table;
+    	table = table->next;
+    	free(tmp);
     }
 }
