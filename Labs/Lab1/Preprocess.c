@@ -49,6 +49,7 @@ int main() {
     			if (searchEQU(equTable_Head, tokens[0])) {
     				printf("found in table\n");
     			}
+    			printf("%s\n",tokens[0]);
     			strcat(lineOut, tokens[0]);
     			strcat(lineOut, " ");
     		}
@@ -73,7 +74,8 @@ int getLine(FILE *fp, char *lineBuffer) {
 	char c;
 	int n = 0;
 
-	while (((c = fgetc(fp)) != '\n') && (n <= 499) && (c != EOF) && (c != ';')) {
+	c = fgetc(fp);
+	while ((c != '\n') && (n < 600) && (c != EOF) && (c != ';')) {
 		if (n == 0) {
 			// Ignores initial blanks
 			while ((c == ' ') || (c == '\t')) {
@@ -83,10 +85,14 @@ int getLine(FILE *fp, char *lineBuffer) {
 		if (c == '\t') {
 			c = ' ';
 		}
-		if (((lineBuffer[n - 1] == ' ') || (lineBuffer[n - 1] == '\t')) && (n != 0)) {
+		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
 			// Ignores useless blanks in line
-			while (c == ' ') {
+			while ((c == ' ') || (c == '\t')) {
 				c = fgetc(fp);
+			}
+			if(c == '\n') {
+				n--;
+				break;
 			}
 		}
 		if (islower(c)) {
@@ -95,6 +101,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 		}
 		lineBuffer[n] = c;
 		n++;
+		c = fgetc(fp);
 	}
 	if (c == ';') {
 		// If a comment is identified,
@@ -107,23 +114,23 @@ int getLine(FILE *fp, char *lineBuffer) {
 	printf("%s", lineBuffer);
 
 	if (c != EOF) return 1;
-	else return 0;
+	return 0;
 }
 
 int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	int n = 0;
+	if (lineBuffer[p] == '\n') return 0;
 
-	while ((!isspace(lineBuffer[p])) && (n < 101)) {
+	while ((!isspace(lineBuffer[p])) && (n < 100)) {
 		tokenBuffer[n] = lineBuffer[p];
 		n++;
 		p++;
 	}
 	tokenBuffer[n] = '\0';
 
-	if (lineBuffer[p] == '\n') return 0;
-	p++;
-	return p;
+	if (lineBuffer[p] == '\n') return p;
+	return ++p;
 }
 
 int isEQULabel(char *token) {
