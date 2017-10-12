@@ -40,7 +40,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 	lineBuffer[n] = '\n';
 	lineBuffer[++n] = '\0';
 
-	printf("%s",lineBuffer);
+	//printf("%s",lineBuffer);
 
 	if (c != EOF) return 1;
 	return 0;

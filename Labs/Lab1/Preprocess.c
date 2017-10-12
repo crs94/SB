@@ -158,7 +158,6 @@ int main() {
     if (fclose(fp) == 0) {
     	printf("\nFile closed.");
     }
-    getchar();
 
     return 0;
 }
