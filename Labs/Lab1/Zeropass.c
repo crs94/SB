@@ -16,8 +16,8 @@ struct MDT {
 };
 
 int isMACROLabel(char *token);
-struct MNT*searchMNT(struct MNT *table, char *token);
-void addMDT(struct MDT **table, char *toAdd);
+struct MDT *searchMNT(struct MNT *table, char *token);
+struct MDT *addMDT(struct MDT **table, char *toAdd);
 void addMNT(struct MNT **table, char *toAdd, struct MDT *first);
 void deleteMDT(struct MDT *table);
 void deleteMNT(struct MNT *table);
@@ -28,7 +28,7 @@ int main() {
 	char token1[101], token2[101];
 	char filename[] = "TestFiles/fatorial.asm";
 	FILE *fp = NULL;
-	int linePos = 0, i = 0, secText = 0, secData = 0, inMacro = 0;
+	int linePos = 0, i = 0, secText = 0, secData = 0, inMacro = 0, firstMacro = 0;
 	struct MDT *mdtTable_Head = NULL;
 	struct MDT *tmpMDT = NULL;
     struct MNT *mntTable_Head = NULL;
@@ -46,18 +46,51 @@ int main() {
             inMacro = 1;
             if (linePos = getToken(line, token1, linePos)) {
                 if (isMACROLabel(token1)) {
-                    printf("MACRO: %s\n\n", token1);
+                    firstMacro = 1;
+                    printf("MACRO: %s\n", token1);
+                    addMNT(&mntTable_Head, token1, NULL);
                 }
             }
         }
         else if (strstr(line, " END ") || strstr(line, "END ") || strstr(line, "END\n")) {
+            // TODO Think of a new way of comparing this
+            printf("finished MACRO!\n");
+            tmpMDT = addMDT(&mdtTable_Head, line);
             inMacro = 0;
-            printf("finished MACRO!\n\n");
         }
         else {
-            if (inMacro) printf("in MACRO\n\n");
-            else printf("not MACRO\n\n");
+            if ((inMacro) && (firstMacro)) {
+                printf("first MACRO\n");
+                tmpMDT = addMDT(&mdtTable_Head, line);
+                mntTable_Head->begin = tmpMDT;
+                tmpMDT = NULL;
+                firstMacro = 0;
+            }
+            else if ((inMacro) && (!firstMacro)) {
+                printf("in MACRO\n");
+                tmpMDT = addMDT(&mdtTable_Head, line);
+            }
+            else {
+                printf("not MACRO\n");
+                if (linePos = getToken(line, token1, linePos)) {
+                    tmpMDT = searchMNT(mntTable_Head, token1);
+                    if (tmpMDT != NULL) {
+                        printf("Found in table!\n");
+                        while (strcmp(tmpMDT->line, "END\n")){
+                            printf("+line\n");
+                        }
+                        printf("End of MACRO\n");
+                    }
+                }
+            }
         }
+        printf("EOL\n\n");
+    }
+
+    deleteMDT(mdtTable_Head);
+    deleteMNT(mntTable_Head);
+    if (fclose(fp) == 0) {
+    	printf("\nFile closed.");
     }
 
     return 0;
@@ -81,22 +114,23 @@ int isMACROLabel(char *token) {
 	else return 0;
 }
 
-struct MNT *searchMNT(struct MNT *table, char *token) {
+struct MDT *searchMNT(struct MNT *table, char *token) {
 
     struct MNT* tmp = table;
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
-        	return tmp;
+        	return tmp->begin;
         }
         tmp = tmp->next;
     }
     return NULL; // Label not defined(?)
 }
 
-void addMDT(struct MDT **table, char *toAdd) {
+struct MDT *addMDT(struct MDT **table, char *toAdd) {
 
 	int i = 0;
+	struct MDT* tmp = *table;
 	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
 	for (i = 0; i < strlen(toAdd); i++) {
 		if (toAdd[i] == ':') {
@@ -104,8 +138,11 @@ void addMDT(struct MDT **table, char *toAdd) {
 		}
 		else new->line[i] = toAdd[i];
 	}
-	new->next = *table;
-	*table = new;
+	new->next = NULL;
+	while (tmp->next != NULL) {
+        tmp = tmp->next;
+	}
+	tmp->next = new;
 }
 
 void addMNT(struct MNT **table, char *toAdd, struct MDT *first) {
