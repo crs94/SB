@@ -28,19 +28,21 @@ int getLine(FILE *fp, char *lineBuffer) {
 			// Converts char to upper case
 			c = toupper(c);
 		}
+		if (c == ';') break;
+
 		lineBuffer[n] = c;
 		n++;
 		c = fgetc(fp);
 	}
+	lineBuffer[n] = '\n';
+	lineBuffer[++n] = '\0';
+	if (n == 1) lineBuffer[0] = '\0';
+
 	if (c == ';') {
 		// If a comment is identified,
 		// the rest of the line is ignored
 		while ((c = fgetc(fp)) != '\n');
 	}
-	lineBuffer[n] = '\n';
-	lineBuffer[++n] = '\0';
-
-	//printf("%s",lineBuffer);
 
 	if (c != EOF) return 1;
 	return 0;

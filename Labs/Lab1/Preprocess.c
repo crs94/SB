@@ -10,16 +10,8 @@ struct equTab {
 	struct equTab *next;
 };
 
-<<<<<<< HEAD
-int getLine(FILE *fp, char *lineBuffer);
-int getToken(char *lineBuffer, char *tokenBuffer, int p);
-int countSpaces(char *line);
 int isLabel(char *token);
-int isValid(char *token);
 //int searchEQU(struct equTab *table, char *token);
-=======
-int isEQULabel(char *token);
->>>>>>> ea6d3f174b8225e1dc19e3be7205ac3d02f1519e
 struct equTab *searchEQU(struct equTab *table, char *token);
 void addEQU(struct equTab **table, char *label, char *digit);
 void deleteEQU(struct equTab *table);
@@ -28,9 +20,10 @@ int main() {
 
 	char line[601], lineOut[601];
 	char token1[101], token2[101];
-	//char *tokens[7] = {token1, token2, token3, token4, token5, token6, token7};
-	char filename[] = "TestFiles/TestFile2.asm";
+	//char filename[] = "TestFiles/TestFile2.asm", output[] = "TestFiles/output.txt";
+	char filename[] = "TestFiles/SB_test_getline.asm", output[] = "TestFiles/output.txt";
 	FILE *fp = NULL;
+	FILE *out = NULL;
 	int linePos = 0, i = 0, secText = 0, secData = 0;
 	struct equTab *equTable_Head = NULL;
 	struct equTab *tmp = NULL;
@@ -40,6 +33,10 @@ int main() {
         exit(1);
     }
 
+	if ((out = fopen(output, "w")) == NULL) {
+        printf("404 Not Found!");
+        exit(1);
+    }
     while (getLine(fp, line)) {
     	i = countSpaces(line);
     	//eliminates line break after label. 
@@ -157,7 +154,8 @@ int main() {
     				strcat(lineOut, " ");
 			   	}
 			   	strcat(lineOut, "\n");
-			   	printf("%s\n", lineOut);
+	    		fprintf(out, "%s", line);
+			   	//printf("%s\n", lineOut);
     		}
     	}
     	i = 0;
@@ -165,90 +163,14 @@ int main() {
     }
 
     deleteEQU(equTable_Head);
-    if (fclose(fp) == 0) {
-    	printf("\nFile closed.");
+    if ((fclose(fp) == 0) && (fclose(out) == 0)) {
+    	printf("\nFiles closed.");
     }
 
     return 0;
 }
 
-<<<<<<< HEAD
-int getLine(FILE *fp, char *lineBuffer) {
-
-	char c;
-	int n = 0;
-
-	c = fgetc(fp);
-	while ((c != '\n') && (n < 600) && (c != EOF) && (c != ';')) {
-		if (n == 0) {
-			// Ignores initial blanks
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
-			}
-		}
-		if (c == '\t') {
-			c = ' ';
-		}
-		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
-			// Ignores useless blanks in line
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
-			}
-			if(c == '\n') {
-				n--;
-				break;
-			}
-		}
-		if (islower(c)) {
-			// Converts char to upper case
-			c = toupper(c);
-		}
-		lineBuffer[n] = c;
-		n++;
-		c = fgetc(fp);
-	}
-	if (c == ';') {
-		// If a comment is identified,
-		// the rest of the line is ignored
-		while ((c = fgetc(fp)) != '\n');
-	}
-	lineBuffer[n] = '\n';
-	lineBuffer[++n] = '\0';
-
-	printf("%s",lineBuffer);
-
-	if (c != EOF) return 1;
-	return 0;
-}
-
-int getToken(char *lineBuffer, char *tokenBuffer, int p) {
-
-	int n = 0;
-	if (lineBuffer[p] == '\n') return 0;
-
-	while ((!isspace(lineBuffer[p])) && (n < 100)) {
-		tokenBuffer[n] = lineBuffer[p];
-		n++;
-		p++;
-	}
-	tokenBuffer[n] = '\0';
-
-	if (lineBuffer[p] == '\n') return p;
-	return ++p;
-}
-
-int countSpaces(char *line) {
-
-	int n, count = 0;
-	for(n = 0; line[n] != '\n'; n++) {
-		if(isspace(line[n])) {
-			count++;
-		}
-	}
-	return(count+1);
-}
-
-int isEQULabel(char *token) {
+int isLabel(char *token) {
 
 
 	int i = 0;
@@ -300,17 +222,6 @@ void addEQU(struct equTab **table, char *name, char *digit) {
 	strcpy(new->value, digit);
 	new->next = *table;
 	*table = new;
-
-	/*if(table==NULL) {
-		printf("first!");
-		table = new;
-	}
-	else {
-		while (tmp != NULL) {
-			tmp = tmp->next;
-		}
-		tmp->next = new;
-	}*/
 }
 
 void deleteEQU(struct equTab *table) {
