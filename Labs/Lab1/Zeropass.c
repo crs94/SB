@@ -76,18 +76,14 @@ int main() {
                 if (linePos = getToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
-                        tmp = mdtTable_Head;
-                        while (!tmp) {
-                            printf("im in!\n");
-                            tmp = tmp->next;
-                        }
                         printf("Found in table!\n");
-                        while ((strcmp(tmpMDT->line, "END\n")) && (strcmp(tmpMDT->line, "END "))) {
+                        while ((strcmp(tmpMDT->line, "END\n")) && (strcmp(tmpMDT->line, "END"))) {
                             printf("%s\n", tmpMDT->line);
                             tmpMDT = tmpMDT->next;
                         }
                         printf("End of MACRO\n");
                     }
+                    else printf("not in table\n");
                 }
             }
         }
@@ -138,17 +134,25 @@ struct MDT *addMDT(struct MDT **table, char *toAdd) {
 
 	int i = 0;
 	struct MDT* tmp = *table;
+    struct MDT* before = NULL;
 	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-	strcpy(new->line, toAdd);
-	new->next = NULL;
-	if (table == NULL) {
+	for (i = 0; i < strlen(toAdd); i++) {
+        if (toAdd[i] == '\n') {
+            new->line[i] = '\0';
+        }
+        else new->line[i] = toAdd[i];
+    }
+    new->next = NULL;
+	if (*table == NULL) {
         *table = new;
         return *table;
     }
     while (tmp != NULL) {
+        before = tmp;
         tmp = tmp->next;
+        printf("printed others\n");
 	}
-    tmp = new;
+    before->next = new;
     return tmp;
 }
 
