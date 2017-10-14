@@ -12,7 +12,7 @@ struct equTab {
 int getLine(FILE *fp, char *lineBuffer);
 int getToken(char *lineBuffer, char *tokenBuffer, int p);
 int countSpaces(char *line);
-int isEQULabel(char *token);
+int isLabel(char *token);
 int isValid(char *token);
 //int searchEQU(struct equTab *table, char *token);
 struct equTab *searchEQU(struct equTab *table, char *token);
@@ -37,7 +37,8 @@ int main() {
 
     while (getLine(fp, line)) {
     	i = countSpaces(line);
-    	//eliminates line break after label
+    	//eliminates line break after label. 
+    	//tratar caso em que há mais de uma quebra de linha?
     	/*if(i == 1) {
     		getLine(fp, lineOut);
     		line[strlen(line)-1] = ' ';
@@ -53,9 +54,9 @@ int main() {
 	    	}
 	    	printf("%s\n",equTable->label);*/
 	    	if(linePos = getToken(line, token1, linePos)) {
-	    		if(isEQULabel(token1)) {
+	    		if(isLabel(token1)) {
 	    			linePos = getToken(line, token2, linePos);
-	    			if (!strcmp(token2,"EQU")) {
+	    			if(!strcmp(token2,"EQU")) {
 	    				if(linePos = getToken(line, token2, linePos)) {
 	    					if(isValid(token2)) {
 	    						//checa se a label já está na tabela
@@ -242,7 +243,7 @@ int countSpaces(char *line) {
 	return(count+1);
 }
 
-int isEQULabel(char *token) {
+int isLabel(char *token) {
 
 	int i = 0;
 	if(isdigit(token[i])) {
