@@ -30,7 +30,8 @@ int main() {
 	FILE *fp = NULL;
 	int linePos = 0, i = 0, secText = 0, secData = 0, inMacro = 0, firstMacro = 0;
 	struct MDT *mdtTable_Head = NULL;
-	struct MDT *tmpMDT = NULL;
+    struct MDT *tmpMDT = NULL;
+	struct MDT *tmp = NULL;
     struct MNT *mntTable_Head = NULL;
 	struct MNT *tmpMNT = NULL;
 
@@ -52,7 +53,7 @@ int main() {
                 }
             }
         }
-        else if (strstr(line, " END ") || strstr(line, "END ") || strstr(line, "END\n")) {
+        else if (strstr(line, "END ") || strstr(line, "END\n")) {
             // TODO Think of a new way of comparing this
             printf("finished MACRO!\n");
             tmpMDT = addMDT(&mdtTable_Head, line);
@@ -75,9 +76,15 @@ int main() {
                 if (linePos = getToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
+                        tmp = mdtTable_Head;
+                        while (!tmp) {
+                            printf("im in!\n");
+                            tmp = tmp->next;
+                        }
                         printf("Found in table!\n");
-                        while (strcmp(tmpMDT->line, "END\n")){
-                            printf("+line\n");
+                        while ((strcmp(tmpMDT->line, "END\n")) && (strcmp(tmpMDT->line, "END "))) {
+                            printf("%s\n", tmpMDT->line);
+                            tmpMDT = tmpMDT->next;
                         }
                         printf("End of MACRO\n");
                     }
@@ -132,17 +139,17 @@ struct MDT *addMDT(struct MDT **table, char *toAdd) {
 	int i = 0;
 	struct MDT* tmp = *table;
 	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-	for (i = 0; i < strlen(toAdd); i++) {
-		if (toAdd[i] == ':') {
-			new->line[i] = '\0';
-		}
-		else new->line[i] = toAdd[i];
-	}
+	strcpy(new->line, toAdd);
 	new->next = NULL;
-	while (tmp->next != NULL) {
+	if (table == NULL) {
+        *table = new;
+        return *table;
+    }
+    while (tmp != NULL) {
         tmp = tmp->next;
 	}
-	tmp->next = new;
+    tmp = new;
+    return tmp;
 }
 
 void addMNT(struct MNT **table, char *toAdd, struct MDT *first) {
