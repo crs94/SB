@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "Util.h"
 
 struct equTab {
 	char label[101];
@@ -9,12 +10,16 @@ struct equTab {
 	struct equTab *next;
 };
 
+<<<<<<< HEAD
 int getLine(FILE *fp, char *lineBuffer);
 int getToken(char *lineBuffer, char *tokenBuffer, int p);
 int countSpaces(char *line);
 int isLabel(char *token);
 int isValid(char *token);
 //int searchEQU(struct equTab *table, char *token);
+=======
+int isEQULabel(char *token);
+>>>>>>> ea6d3f174b8225e1dc19e3be7205ac3d02f1519e
 struct equTab *searchEQU(struct equTab *table, char *token);
 void addEQU(struct equTab **table, char *label, char *digit);
 void deleteEQU(struct equTab *table);
@@ -117,7 +122,7 @@ int main() {
 	    								else {
 	    								//operando diferente de 0 ou 1
 	    								//indica erro operando inválido
-	    								
+
 	    								}
 	    							}
 	    						}
@@ -145,8 +150,8 @@ int main() {
     				if(tmp != NULL) {
 	    				printf("found in table\n");
 	    				strcpy(token1, tmp->value);
- 					}   
-    			
+ 					}
+
     				//printf("%s\n",token1);
     				strcat(lineOut, token1);
     				strcat(lineOut, " ");
@@ -163,11 +168,11 @@ int main() {
     if (fclose(fp) == 0) {
     	printf("\nFile closed.");
     }
-    getchar();
 
     return 0;
 }
 
+<<<<<<< HEAD
 int getLine(FILE *fp, char *lineBuffer) {
 
 	char c;
@@ -243,7 +248,8 @@ int countSpaces(char *line) {
 	return(count+1);
 }
 
-int isLabel(char *token) {
+int isEQULabel(char *token) {
+
 
 	int i = 0;
 	if(isdigit(token[i])) {
@@ -266,33 +272,6 @@ int isLabel(char *token) {
 		return 0;
 	}
 }
-
-int isValid(char *token) {
-
-	int i = 0;
-	while (token[i] != '\0') {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			printf("Invalid\n");
-			return 0;
-		}
-		i++;
-	}
-	return 1;
-}
-
-/*int searchEQU(struct equTab *table, char *token) {
-
-    struct equTab* tmp = table;
-    while ((tmp != NULL)) {
-    	printf("I'm here!\n");
-        if (!strcmp(tmp->label, token)) {
-        	strcpy(token, tmp->value);
-        	return 1;
-        }
-        tmp = tmp->next;
-    }
-    return 0; // Label not defined(?)
-}*/
 
 struct equTab *searchEQU(struct equTab *table, char *token) {
 
