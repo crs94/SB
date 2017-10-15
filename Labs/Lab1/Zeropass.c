@@ -26,17 +26,22 @@ int main() {
 
     char line[601], lineOut[601];
 	char token1[101], token2[101];
-	char filename[] = "TestFiles/fatorial.asm";
-	FILE *fp = NULL;
+	char filename[] = "TestFiles/fatorial.asm", output[] = "TestFiles/output.txt";
+    FILE *fp = NULL;
+	FILE *out = NULL;
 	int linePos = 0, i = 0, secText = 0, secData = 0, inMacro = 0, firstMacro = 0;
 	struct MDT *mdtTable_Head = NULL;
     struct MDT *tmpMDT = NULL;
-	struct MDT *tmp = NULL;
     struct MNT *mntTable_Head = NULL;
 	struct MNT *tmpMNT = NULL;
 
     if ((fp = fopen(filename, "r")) == NULL) {
         printf("404 Not Found!");
+        exit(1);
+    }
+
+    if ((out = fopen(output, "w")) == NULL) {
+        printf("Could open!");
         exit(1);
     }
 
@@ -77,13 +82,13 @@ int main() {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
                         printf("Found in table!\n");
-                        while ((strcmp(tmpMDT->line, "END\n")) && (strcmp(tmpMDT->line, "END"))) {
-                            printf("%s\n", tmpMDT->line);
+                        while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
+                            fprintf(out, "%s\n", tmpMDT->line);
                             tmpMDT = tmpMDT->next;
                         }
                         printf("End of MACRO\n");
                     }
-                    else printf("not in table\n");
+                    else fprintf(out, "%s", line);
                 }
             }
         }
@@ -92,8 +97,8 @@ int main() {
 
     deleteMDT(mdtTable_Head);
     deleteMNT(mntTable_Head);
-    if (fclose(fp) == 0) {
-    	printf("\nFile closed.");
+    if ((fclose(fp) == 0) && (fclose(out) == 0)) {
+    	printf("\nFiles closed.");
     }
 
     return 0;
@@ -120,6 +125,9 @@ int isMACROLabel(char *token) {
 struct MDT *searchMNT(struct MNT *table, char *token) {
 
     struct MNT* tmp = table;
+
+    // Searches whole table intil correct label is found
+    // or until the end is reached
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
@@ -127,7 +135,7 @@ struct MDT *searchMNT(struct MNT *table, char *token) {
         }
         tmp = tmp->next;
     }
-    return NULL; // Label not defined(?)
+    return NULL;
 }
 
 struct MDT *addMDT(struct MDT **table, char *toAdd) {
@@ -136,21 +144,26 @@ struct MDT *addMDT(struct MDT **table, char *toAdd) {
 	struct MDT* tmp = *table;
     struct MDT* before = NULL;
 	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-	for (i = 0; i < strlen(toAdd); i++) {
+	
+    // Removes LF from lines before inserting into table
+    for (i = 0; i < strlen(toAdd); i++) {
         if (toAdd[i] == '\n') {
             new->line[i] = '\0';
         }
         else new->line[i] = toAdd[i];
     }
     new->next = NULL;
+
+    // If the table is empty, insert first node
 	if (*table == NULL) {
         *table = new;
         return *table;
     }
+
+    // Else, search for empty space
     while (tmp != NULL) {
         before = tmp;
         tmp = tmp->next;
-        printf("printed others\n");
 	}
     before->next = new;
     return tmp;
