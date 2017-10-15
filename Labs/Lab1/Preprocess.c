@@ -18,7 +18,7 @@ void deleteEQU(struct equTab *table);
 
 int main() {
 
-	char line[601], lineOut[601];
+	char line[601], lineOut[601], aux[601];
 	char token1[101], token2[101];
 	//char filename[] = "TestFiles/TestFile2.asm", output[] = "TestFiles/output.txt";
 	char filename[] = "TestFiles/SB_test_getline.asm", output[] = "TestFiles/output.txt";
@@ -43,7 +43,7 @@ int main() {
 
     while (getLine(fp, line)) {
 	    if (strlen(line) > 0) {	
-	    	i = countSpaces(line);
+	    	//i = countSpaces(line);
 	    	//eliminates line break after label. 
 	    	//tratar caso em que há mais de uma quebra de linha?
 	    	/*if(i == 1) {
@@ -51,6 +51,17 @@ int main() {
 	    		line[strlen(line)-1] = ' ';
 	    		strcat(line, lineOut);
 	    	}*/
+	    	if (line[strlen(line)-2] == ':') {
+    			line[strlen(line)-1] = '\0';
+    			printf("%s", line);
+    			do {
+    				getLine(fp, aux);
+    			} while (strlen(aux) == 0);
+    			strcat(line, " ");
+    			printf("%s", line);
+    			strcat(line, aux);
+    			printf("%s", line);
+    		}
 	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) {
 				/*while ((linePos = getToken(line, tokens[i], linePos)) && (i < 7)) {
 		    		i++;
@@ -147,7 +158,7 @@ int main() {
 		    	}
 		    	else {
 		    		printf("isOther\n");
-	    			while (linePos = getToken(line, token1, linePos)) {
+		    		while (linePos = getToken(line, token1, linePos)) {
 	    				tmp = searchEQU(equTable_Head, token1);
 	    				if(tmp != NULL) {
 		    				printf("found in table\n");
