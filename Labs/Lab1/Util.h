@@ -1,3 +1,14 @@
+FILE *openFile(char *filename) {
+
+    FILE *fp;
+
+    if ((fp = fopen(filename, "r")) == NULL) {
+        printf("File not found: %s\n",filename);
+        exit(1);
+    }
+    return fp;
+}
+
 int getLine(FILE *fp, char *lineBuffer) {
 
 	char c;

@@ -100,7 +100,6 @@ int main() {
 		    			tratar caso label = "EQU:" ou label é o nome de inst?
 		    		}*/
 		    	}
-				linePos = 0;
 		    }
 		    else {
 		    	if(strstr(line, "IF ") || strstr(line, " IF ") || strstr(line, " IF\n")) {
@@ -166,6 +165,7 @@ int main() {
 	    	}
 	    	i = 0;
 	    	lineOut[0] = '\0';
+	    	linePos = 0;
 	    }
     }
 

@@ -3,88 +3,46 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct instTab {
-    char inst[7];
-    char opcode[3];
-    int operator;
-};
+int main(int argc, char *argv[]) {
+	
+	char usage[] = "Usage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n"
+	FILE *fin, *fout;
+	//Declarar tabela de erros e de linhas
+	
+	if((argc != 4) || ((strcmp(argv[1], "-p")) && (strcmp(argv[1], "-m")) && (strcmp(argv[1], "-o")))) {
+		//checar extensão válida de argv[3]?
+		printf("%s\n",usage);
+		return 0;
+	}
 
-struct dirTab {
-	char dir[7];
-	int operator;
-	int size;
-};
-
-struct mnt {
-	char name[101];
-	struct mdt *beginning;
-	struct mnt *next;
-};
-
-struct mdt {
-	char line[51];
-	struct mdt *next;
-};
-
-struct symTab {
-	char label[101];
-	int memWhere;
-	struct places *list;
-	int defined;
-	int vector;
-	struct symTab *next;
-};
-
-struct instTab **createInsts();
-void openFile(char *filename);
-
-int main() {
-
-    char filename[50] = "TestFiles/bin.asm";
-    struct instTab **headInst;
-
-    openFile(filename);
-
-    headInst = createInsts();
-    printf("\n%s\t%s\t%d", headInst[0]->inst, headInst[0]->opcode, headInst[0]->operator);
-    getchar();
+    if(!(fin = openFile(argv[2]))) return 0;
+    fout = 
+    
+    if(!(preprocess(fp, error_tab))) {
+		//retorna erros
+	}
+	else {
+		fecha arquivo de saída anterior
+		fecha arquivo fonte
+		if((!strcmp(argv[1], "-o")) || (!strcmp(argv[1], "-o"))) {
+			abre arquivo anterior para leitura
+			abre novo arquivo de saída
+			if(!(Pass_zero(arquivo para leitura, error_tab, arquivo para escrita)))
+				retorna erro
+			fecha arquivos
+			remove arquivo da passagem de pré-processamento?
+		if (!strcmp(argv[1], "-o")) {
+			Declara tabelas de saída outtable_inst e outtable_data
+			if(!(one_pass(arquivo_passagem0, outtable_inst, outtable_data, error_tab, )))
+				retorna erro
+			remove arquivo_passagem0
+			Processa erros
+			escreve arquivo objeto
+			retorna
+		}
+		escreve mensagens de erro
+	}
 
     return 0;
 }
 
-struct instTab **createInsts() {
-
-    struct instTab *ptr[2];
-    ptr[0] = NULL;
-    ptr[0] = (struct instTab*) malloc(sizeof(struct instTab));
-
-    strcpy(ptr[0]->inst, "test");
-    strcpy(ptr[0]->opcode, "16");
-    ptr[0]->operator = 1;
-
-    return ptr;
-}
-
-
-void openFile(char *filename) {
-    char str1[50];
-    int i = 0;
-    FILE *fp;
-
-    if ((fp = fopen(filename, "r")) == NULL) {
-        printf("404 Not Found!");
-        exit(1);
-    }
-    if (fp == NULL) {
-        printf("File couldn't be opened.");
-        exit(1);
-    }
-
-    /*while (fscanf(fp, "%c", &str1) == 1){*/
-    while (fgets(str1, 50, fp) != NULL){
-        printf("%s", str1);
-        i++;
-    }
-    printf("\nEOF and i = %d", i);
-    fclose(fp);
-}

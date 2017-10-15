@@ -13,7 +13,7 @@ struct opTable_node {
 struct replace_list_node {
 	int *replace;
 	int offset;
-	struct replace_list *next;
+	struct replace_list_node *next;
 };
 
 struct symTable_node {
@@ -23,6 +23,7 @@ struct symTable_node {
 	struct replace_list_node *list; //this will keep offset position of undefined symbol
 	int vector; //zero until defined?
 	//int line; ?
+	struct symTable_node *next;
 };
 
 struct outputLine {
@@ -37,16 +38,15 @@ void deleteSymTable(struct symTable_node *table);
 struct opTable_node *searchOp(struct opTable_node *table, char *token);
 void addReplace(struct symTable_node *node, struct outputLine *outLine, int n);
 //addLine(lineOut, head);
+//isOffset();
 
 int main Pass_One() {
 	char line[601], lineOut[601];
 	char token1[101], token2[101];
-	//char *tokens[7] = {token1, token2, token3, token4, token5, token6, token7};
 	char filename[] = "TestFiles/TestFile2.asm";
-	FILE *fp = NULL;
 	int linePos = 0, i = 0, secText = 0, secData = 0, offset = 0;
+	FILE *fp = NULL;
 	struct outputLine *head = NULL;
-	//struct outputLine *tail;
 	struct outputLine *lineOut; //linha atual
 	struct symTable_node *symTable = NULL;
 	struct symTable_node *tmp_sym = NULL;
@@ -75,6 +75,7 @@ int main Pass_One() {
     while (getLine(fp, line)) {
     	linePos = 0;
     	lineOut = (struct outputLine*)malloc(size_of(struct outputLine)); //free if finds an error?
+    	lineOut->op[1] = -1; //this will be tested before writing to file
     	if(linePos = getToken(line, token1, linePos)) {
     		if(isLabel(token1)) {
     			tmp_sym = searchSym(symTable, token1);
@@ -90,12 +91,14 @@ int main Pass_One() {
 				if(isValid(token1) {
 					tmp_op = searchOp(opTable, token1);
 					if(tmp_op != NULL) { //found an operation
+						lc+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						n = 0;
+						tmp_sym = NULL;
 						while(linePos = getToken(line, token1, linePos)) { //gets operands
 							//what if first operand is '+'?
-							if(n <= tmp_op->operands) {
-								if(isValid(token1) {
+							if(isValid(token1) {
+								if(n < tmp_op->operands) {
 									tmp_sym = searchSym(symTable, token1);
 									if(tmp_sym != NULL) { //found operand in symTable
 										if(tmp_sym->defined) {
@@ -113,37 +116,40 @@ int main Pass_One() {
 										addReplace(symTable, lineOut, n);
 										tmp_sym = symTable;
 									}
-									n++;
 								}
-								else {
-									if((!strcmp(token1, "+")) && (n>0)) {
-										if(tmp_sym != NULL) { //if previous token was an operand
-											if(linePos = getToken(line, token1, linePos)) {
-												if(isOffset(token1) {
-													offset = atoi(token1);
-													if(tmp_sym->defined) {
+								n++; //em que ponto(s) incrementar n?
+							}
+							else {
+								if((!strcmp(token1, "+")) && (n>0) &&(n <= tmp_op->operands)) {
+									if(tmp_sym != NULL) { //if previous token was an operand
+										if(linePos = getToken(line, token1, linePos)) {
+											if(isOffset(token1) { //checks if token is a number
+												offset = atoi(token1);
+												if(tmp_sym->defined) {
+													if(offset <= tmp_sym->vetor) {
 														lineOut->op[n-1]+=offset;
 													}
-													else {
-														tmp_sym->list->offset = offset;
-													}
 												}
-												/*else {
-													error: invalid offset
-												}*/
+												else {
+													//checar se não excede tamanho do vetor?
+													tmp_sym->list->offset = offset;
+												}
 											}
 											/*else {
-												error: missing offset number after '+'	
+												error: invalid offset
 											}*/
 										}
 										/*else {
-											error?
+											error: missing offset number after '+'	
 										}*/
 									}
 									/*else {
-										error: invalid operand
+										error?
 									}*/
 								}
+								/*else {
+									error: invalid operand
+								}*/
 							}
 						}
 						if(n == tmp_op->operands) {
@@ -156,18 +162,20 @@ int main Pass_One() {
 					}
 					else {
 						if(!strcmp(token1, "SPACE")) {
+							//incrementa LC e processa
 						
 						}
 						else {
 							if(!strcmp(token1, "CONST")) {
-							
+								//incrementa LC e processa
+								//deve aceitar números positivos e negativos (inteiros e hexadecimais)
 							}
 							else {
 								if(!strcmp(token1, "SECTION")) {
 								
 								}
 								/*else {
-									erro?
+									erro? Misplaced token?
 								}*/
 							}
 						}
