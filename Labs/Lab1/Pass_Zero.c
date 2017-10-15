@@ -15,7 +15,6 @@ struct MDT {
     struct MDT *next;
 };
 
-int isMACROLabel(char *token);
 struct MDT *searchMNT(struct MNT *table, char *token);
 struct MDT *addMDT(struct MDT **table, char *toAdd);
 void addMNT(struct MNT **table, char *toAdd, struct MDT *first);
@@ -51,7 +50,7 @@ int main() {
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
             inMacro = 1;
             if (linePos = getToken(line, token1, linePos)) {
-                if (isMACROLabel(token1)) {
+                if (isLabel(token1)) {
                     firstMacro = 1;
                     printf("MACRO: %s\n", token1);
                     addMNT(&mntTable_Head, token1, NULL);
@@ -102,24 +101,6 @@ int main() {
     }
 
     return 0;
-}
-
-int isMACROLabel(char *token) {
-
-	int i = 0;
-	if(isdigit(token[0])) return 0;
-	i++;
-	while (token[i] != '\0') {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			if((token[i] == ':') && (token[i+1] != '\0')) {
-				return 0;
-			}
-		}
-		i++;
-	}
-
-	if (token[i - 1] == ':') return 1;
-	else return 0;
 }
 
 struct MDT *searchMNT(struct MNT *table, char *token) {

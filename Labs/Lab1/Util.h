@@ -40,6 +40,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 		while ((c = fgetc(fp)) != '\n');
 	}
 	if (n > 0) {
+		if(lineBuffer[n-1] == ' ') n--;
 		lineBuffer[n] = '\n';
 		lineBuffer[++n] = '\0';
 	}
@@ -77,6 +78,31 @@ int countSpaces(char *line) {
 		}
 	}
 	return(count+1);
+}
+
+int isLabel(char *token) {
+
+
+	int i = 0;
+	if(isdigit(token[i])) {
+		return 0;
+	}
+	i++;
+	while (token[i] != '\0') {
+		if((!isalnum(token[i])) && (token[i] != '_')) {
+			if((token[i] == ':') && (token[i+1] != '\0')) {
+				return 0;
+			}
+		}
+		i++;
+	}
+
+	if (token[i - 1] == ':') {
+		return 1;
+	}
+	else {
+		return 0;
+	}
 }
 
 int isValid(char *token) {

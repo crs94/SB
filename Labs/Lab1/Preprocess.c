@@ -10,8 +10,6 @@ struct equTab {
 	struct equTab *next;
 };
 
-int isLabel(char *token);
-//int searchEQU(struct equTab *table, char *token);
 struct equTab *searchEQU(struct equTab *table, char *token);
 void addEQU(struct equTab **table, char *label, char *digit);
 void deleteEQU(struct equTab *table);
@@ -43,19 +41,11 @@ int main() {
 
     while (getLine(fp, line)) {
 	    if (strlen(line) > 0) {	
-	    	//i = countSpaces(line);
-	    	//eliminates line break after label. 
-	    	//tratar caso em que há mais de uma quebra de linha?
-	    	/*if(i == 1) {
-	    		getLine(fp, lineOut);
-	    		line[strlen(line)-1] = ' ';
-	    		strcat(line, lineOut);
-	    	}*/
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			printf("%s", line);
     			do {
-    				getLine(fp, aux);
+    				getLine(fp, aux); //checar EOF?
     			} while (strlen(aux) == 0);
     			strcat(line, " ");
     			printf("%s", line);
@@ -185,31 +175,6 @@ int main() {
     }
 
     return 0;
-}
-
-int isLabel(char *token) {
-
-
-	int i = 0;
-	if(isdigit(token[i])) {
-		return 0;
-	}
-	i++;
-	while (token[i] != '\0') {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			if((token[i] == ':') && (token[i+1] != '\0')) {
-				return 0;
-			}
-		}
-		i++;
-	}
-
-	if (token[i - 1] == ':') {
-		return 1;
-	}
-	else {
-		return 0;
-	}
 }
 
 struct equTab *searchEQU(struct equTab *table, char *token) {
