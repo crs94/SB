@@ -1,7 +1,8 @@
- #pragma warning(disable: 4996)
+#pragma warning(disable: 4996)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 
 
 struct MNT_node {
@@ -15,16 +16,11 @@ struct MDT_node {
     struct MDT_node *next;
 };
 
-int isMACROLabel(char *token);
 struct MNT_node *searchMNT(struct MNT_node *table, char *token);
 struct MDT_node *addMDT(struct MDT_node **table, char *toAdd);
 void addMNT(struct MNT_node **table, char *toAdd, struct MDT_node *first);
 void deleteMDT(struct MDT_node *table);
 void deleteMNT(struct MNT_node *table);
-int getLine(FILE *fp, char *lineBuffer);
-int getToken(char *lineBuffer, char *tokenBuffer, int p);
-int countSpaces(char *line);
-int isValid(char *token);
 
 int main() {
 
@@ -49,7 +45,7 @@ int main() {
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
             inMacro = 1;
             if(linePos = getToken(line, token1, linePos)) {
-                if(isMACROLabel(token1)) {
+                if(isLabel(token1)) {
                     //firstMacro = 1;
                     printf("MACRO: %s\n", token1);
                     /*if(linePos = getToken(line, token2, linePos)) {
@@ -123,24 +119,6 @@ int main() {
     return 0;
 }
 
-int isMACROLabel(char *token) {
-
-	int i = 0;
-	if(isdigit(token[0])) return 0;
-	i++;
-	while (token[i] != '\0') {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			if((token[i] == ':') && (token[i+1] != '\0')) {
-				return 0;
-			}
-		}
-		i++;
-	}
-
-	if (token[i - 1] == ':') return 1;
-	else return 0;
-}
-
 struct MNT_node *searchMNT(struct MNT_node *table, char *token) {
 
     struct MNT_node* tmp = table;
@@ -206,93 +184,5 @@ void deleteMNT(struct MNT_node *table) {
     	table = table->next;
     	free(tmp);
     }
-}
-
-int getLine(FILE *fp, char *lineBuffer) {
-
-	char c;
-	int n = 0;
-
-	c = fgetc(fp);
-	while ((c != '\n') && (n < 600) && (c != EOF) && (c != ';')) {
-		if (n == 0) {
-			// Ignores initial blanks
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
-			}
-		}
-		if (c == '\t') {
-			c = ' ';
-		}
-		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
-			// Ignores useless blanks in line
-			while ((c == ' ') || (c == '\t')) {
-				c = fgetc(fp);
-			}
-			if(c == '\n') {
-				n--;
-				break;
-			}
-		}
-		if (islower(c)) {
-			// Converts char to upper case
-			c = toupper(c);
-		}
-		lineBuffer[n] = c;
-		n++;
-		c = fgetc(fp);
-	}
-	if (c == ';') {
-		// If a comment is identified,
-		// the rest of the line is ignored
-		while ((c = fgetc(fp)) != '\n');
-	}
-	lineBuffer[n] = '\n';
-	lineBuffer[++n] = '\0';
-
-	//printf("%s",lineBuffer);
-
-	if (c != EOF) return 1;
-	return 0;
-}
-
-int getToken(char *lineBuffer, char *tokenBuffer, int p) {
-
-	int n = 0;
-	if (lineBuffer[p] == '\n') return 0;
-
-	while ((!isspace(lineBuffer[p])) && (n < 100)) {
-		tokenBuffer[n] = lineBuffer[p];
-		n++;
-		p++;
-	}
-	tokenBuffer[n] = '\0';
-
-	if (lineBuffer[p] == '\n') return p;
-	return ++p;
-}
-
-int countSpaces(char *line) {
-
-	int n, count = 0;
-	for(n = 0; line[n] != '\n'; n++) {
-		if(isspace(line[n])) {
-			count++;
-		}
-	}
-	return(count+1);
-}
-
-int isValid(char *token) {
-
-	int i = 0;
-	while (token[i] != '\0') {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			printf("Invalid\n");
-			return 0;
-		}
-		i++;
-	}
-	return 1;
 }
 

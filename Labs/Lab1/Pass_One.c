@@ -35,7 +35,7 @@ struct symTable_node *searchSym(struct symTable_node *table, char *token);
 void addSym(struct symTable_node **table, char *name, int address, int defined, int vector);
 void deleteSymTable(struct symTable_node *table);
 struct opTable_node *searchOp(struct opTable_node *table, char *token);
-void addReplace(struct symTable_node *node, struct outputLine *outLine, int n, int offset);
+void addReplace(struct symTable_node *node, struct outputLine *outLine, int n);
 //addLine(lineOut, head);
 
 int main Pass_One() {
@@ -103,14 +103,14 @@ int main Pass_One() {
 										}
 										else {
 											lineOut->op[n] = -1;
-											addReplace(tmp_sym, lineOut, n, offset);	
+											addReplace(tmp_sym, lineOut, n);	
 										}
 									}
 									else {
 										//forward reference
 										addSym(&symTable, token1, 0, 0, 0);
 										lineOut->op[n] = -1;
-										addReplace(symTable, lineOut, n, offset);
+										addReplace(symTable, lineOut, n);
 										tmp_sym = symTable;
 									}
 									n++;
@@ -183,11 +183,10 @@ int main Pass_One() {
 
 
 //Found an undefined operand and need include in replace_list
-void addReplace(struct symTable_node *node, struct outputLine *outLine, int n, int offset) {
+void addReplace(struct symTable_node *node, struct outputLine *outLine, int n) {
 	struct replace_list_node *tmp = node->list;
 	struct replace_list_node *new = (struct replace_list_node*)malloc(sizeof(struct replace_list_node));
 	new->replace = outLine->op[n];//does it work?
-	new->offset = offset;
 	new->next = NULL;
 	while(tmp->next != NULL) {
 		tmp = tmp->next;

@@ -69,17 +69,6 @@ int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 	return ++p;
 }
 
-int countSpaces(char *line) {
-
-	int n, count = 0;
-	for(n = 0; line[n] != '\n'; n++) {
-		if(isspace(line[n])) {
-			count++;
-		}
-	}
-	return(count+1);
-}
-
 int isLabel(char *token) {
 
 
