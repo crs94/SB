@@ -10,6 +10,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 			while ((c == ' ') || (c == '\t')) {
 				c = fgetc(fp);
 			}
+			if ((c == ';') || (c == '\n')) break;
 		}
 		if (c == '\t') {
 			c = ' ';
@@ -28,21 +29,24 @@ int getLine(FILE *fp, char *lineBuffer) {
 			// Converts char to upper case
 			c = toupper(c);
 		}
-		if (c == ';') break;
 
 		lineBuffer[n] = c;
 		n++;
 		c = fgetc(fp);
 	}
-	lineBuffer[n] = '\n';
-	lineBuffer[++n] = '\0';
-	if (n == 1) lineBuffer[0] = '\0';
-
 	if (c == ';') {
 		// If a comment is identified,
 		// the rest of the line is ignored
 		while ((c = fgetc(fp)) != '\n');
 	}
+	if (n > 0) {
+		lineBuffer[n] = '\n';
+		lineBuffer[++n] = '\0';
+	}
+	else {
+		lineBuffer[0] = '\0';
+	}
+	//if ((n == 1) && (c == ';')) lineBuffer[0] = '\0';
 
 	if (c != EOF) return 1;
 	return 0;
