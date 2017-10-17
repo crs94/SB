@@ -4,7 +4,7 @@
 #include <string.h>
 #include "Util.h"
 
-struct opTable_node {
+struct op_table_node {
 	char *name;
 	int opcode;
 	int operands;
@@ -16,42 +16,43 @@ struct replace_list_node {
 	struct replace_list_node *next;
 };
 
-struct symTable_node {
+struct sym_table_node {
 	char[101] label;
 	int address;
 	int defined;
 	struct replace_list_node *list; //this will keep offset position of undefined symbol
 	int vector; //zero until defined?
 	//int line; ?
-	struct symTable_node *next;
+	struct sym_table_node *next;
 };
 
-struct outputLine {
+struct output_line {
 	int opcode;
 	int op[2];
-	struct outputLine *next;
+	struct output_line *next;
 };
 
-struct symTable_node *searchSym(struct symTable_node *table, char *token);
-void addSym(struct symTable_node **table, char *name, int address, int defined, int vector);
-void deleteSymTable(struct symTable_node *table);
-struct opTable_node *searchOp(struct opTable_node *table, char *token);
-void addReplace(struct symTable_node *node, struct outputLine *outLine, int n);
+struct sym_table_node *searchSym(struct sym_table_node *table, char *token);
+void AddSym(struct sym_table_node **table, char *name, int address, int defined, int vector);
+void DeleteSymTable(struct sym_table_node *table);
+struct op_table_node *searchOp(struct op_table_node *table, char *token);
+void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n);
 //addLine(lineOut, head);
 //isOffset();
 
 int main Pass_One() {
+
 	char line[601], lineOut[601];
 	char token1[101], token2[101];
 	char filename[] = "TestFiles/TestFile2.asm";
 	int linePos = 0, i = 0, secText = 0, secData = 0, offset = 0;
 	FILE *fp = NULL;
-	struct outputLine *head = NULL;
-	struct outputLine *lineOut; //linha atual
-	struct symTable_node *symTable = NULL;
-	struct symTable_node *tmp_sym = NULL;
-	struct opTable_node *tmp_op = NULL;
-	struct opTable_node[14] opTable = {	"ADD", 1, 1,
+	struct output_line *head = NULL;
+	struct output_line *lineOut; //linha atual
+	struct sym_table_node *symTable = NULL;
+	struct sym_table_node *tmp_sym = NULL;
+	struct op_table_node *tmp_op = NULL;
+	struct op_table_node[14] opTable = {	"ADD", 1, 1,
 										"SUB", 2, 1,
 										"MULT", 3, 1,
 										"DIV", 4, 1,
@@ -72,48 +73,50 @@ int main Pass_One() {
         exit(1);
     }
     
-    while (getLine(fp, line)) {
+    while (GetLine(fp, line)) {
     	linePos = 0;
-    	lineOut = (struct outputLine*)malloc(size_of(struct outputLine)); //free if finds an error?
+    	lineOut = (struct output_line*)malloc(size_of(struct output_line)); //free if finds an error?
     	lineOut->op[1] = -1; //this will be tested before writing to file
-    	if(linePos = getToken(line, token1, linePos)) {
-    		if(isLabel(token1)) {
-    			tmp_sym = searchSym(symTable, token1);
+    	if(linePos = GetToken(line, token1, linePos)) {
+    	
+    		if(IsLabel(token1)) {
+    			tmp_sym = SearchSym(symTable, token1);
     			if(tmp_sym == NULL) {
-    				addSym(&table, token1, lc, 1, 0); //found label definition
+    				AddSym(&table, token1, lc, 1, 0); //found label definition
     				//acrescentar replaceLists() aqui? no final antes de escrever no arquivo?
     			}
     			/*else {
     				definição da label ou erro: label redefinida
     			}*/
     		}
+    		
     		else {
-				if(isValid(token1) {
-					tmp_op = searchOp(opTable, token1);
+				if(IsValid(token1) {
+					tmp_op = SearchOp(opTable, token1);
 					if(tmp_op != NULL) { //found an operation
 						lc+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						n = 0;
 						tmp_sym = NULL;
-						while(linePos = getToken(line, token1, linePos)) { //gets operands
+						while(linePos = GetToken(line, token1, linePos)) { //gets operands
 							//what if first operand is '+'?
-							if(isValid(token1) {
+							if(IsValid(token1) {
 								if(n < tmp_op->operands) {
-									tmp_sym = searchSym(symTable, token1);
+									tmp_sym = SearchSym(symTable, token1);
 									if(tmp_sym != NULL) { //found operand in symTable
 										if(tmp_sym->defined) {
 											lineOut->op[n] = tmp_sym->address;
 										}
 										else {
 											lineOut->op[n] = -1;
-											addReplace(tmp_sym, lineOut, n);	
+											AddReplace(tmp_sym, lineOut, n);	
 										}
 									}
 									else {
 										//forward reference
-										addSym(&symTable, token1, 0, 0, 0);
+										AddSym(&symTable, token1, 0, 0, 0);
 										lineOut->op[n] = -1;
-										addReplace(symTable, lineOut, n);
+										AddReplace(symTable, lineOut, n);
 										tmp_sym = symTable;
 									}
 								}
@@ -122,8 +125,8 @@ int main Pass_One() {
 							else {
 								if((!strcmp(token1, "+")) && (n>0) &&(n <= tmp_op->operands)) {
 									if(tmp_sym != NULL) { //if previous token was an operand
-										if(linePos = getToken(line, token1, linePos)) {
-											if(isOffset(token1) { //checks if token is a number
+										if(linePos = GetToken(line, token1, linePos)) {
+											if(IsOffset(token1) { //checks if token is a number
 												offset = atoi(token1);
 												if(tmp_sym->defined) {
 													if(offset <= tmp_sym->vetor) {
@@ -154,12 +157,13 @@ int main Pass_One() {
 						}
 						if(n == tmp_op->operands) {
 							lineOut->next = NULL;
-							addLine(lineOut, head);
+							AddLine(lineOut, head);
 						}
 						/*else {
 							else?
 						}*/
 					}
+					
 					else {
 						if(!strcmp(token1, "SPACE")) {
 							//incrementa LC e processa
@@ -181,6 +185,7 @@ int main Pass_One() {
 						}
 					}
 				}
+				
 				/*else {
 					erro: token inválido?
 				}*/
@@ -191,7 +196,7 @@ int main Pass_One() {
 
 
 //Found an undefined operand and need include in replace_list
-void addReplace(struct symTable_node *node, struct outputLine *outLine, int n) {
+void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n) {
 	struct replace_list_node *tmp = node->list;
 	struct replace_list_node *new = (struct replace_list_node*)malloc(sizeof(struct replace_list_node));
 	new->replace = outLine->op[n];//does it work?
@@ -202,8 +207,8 @@ void addReplace(struct symTable_node *node, struct outputLine *outLine, int n) {
 	tmp->next = new;
 }
 
-struct symTable_node *searchSym(struct symTable_node *table, char *token) {
-	struct symTable_node* tmp = table;
+struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
+	struct sym_table_node* tmp = table;
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
@@ -214,14 +219,14 @@ struct symTable_node *searchSym(struct symTable_node *table, char *token) {
     return NULL; // Label not defined(?)
 }
 
-void addSym(struct symTable_node **table, 
+void AddSym(struct sym_table_node **table, 
 			char *name, 
 			int address, 
 			int defined,
 			int vector) {
 			
 	int i = 0;
-	struct symTable_node* new = (struct symTable_node*)malloc(sizeof(struct symTable_node));
+	struct sym_table_node* new = (struct sym_table_node*)malloc(sizeof(struct sym_table_node));
 	for (i = 0; i < strlen(name); i++) {
 		if (name[i] == ':') {
 			new->label[i] = '\0';
@@ -236,8 +241,8 @@ void addSym(struct symTable_node **table,
 	*table = new;
 }
 
-void deleteSymTable(struct symTable_node *table) {
-	struct symTable_node* tmp;
+void DeleteSymTable(struct sym_table_node *table) {
+	struct sym_table_node* tmp;
     while(table != NULL) {
     	tmp = table;
     	table = table->next;
@@ -245,9 +250,9 @@ void deleteSymTable(struct symTable_node *table) {
     }
 }
 
-struct opTable_node *searchOp(struct opTable_node *table, char *token) {
+struct op_table_node *SearchOp(struct op_table_node *table, char *token) {
 	int n;
-	struct opTable_node* tmp = NULL;
+	struct op_table_node* tmp = NULL;
     for(n = 0; n < 14; n++) {
     	if(!strcmp(table[n]->name, token)) tmp = table[n];
     }

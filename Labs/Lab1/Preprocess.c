@@ -4,27 +4,26 @@
 #include <string.h>
 #include "Util.h"
 
-struct equTab {
+struct equ_tab {
 	char label[101];
 	char value[101];
-	struct equTab *next;
+	struct equ_tab *next;
 };
 
-struct equTab *searchEQU(struct equTab *table, char *token);
-void addEQU(struct equTab **table, char *label, char *digit);
-void deleteEQU(struct equTab *table);
+struct equ_tab *SearchEQU(struct equ_tab *table, char *token);
+void AddEQU(struct equ_tab **table, char *label, char *digit);
+void DeleteEQU(struct equ_tab *table);
 
 int main() {
 
 	char line[601], lineOut[601], aux[601];
 	char token1[101], token2[101];
-	//char filename[] = "TestFiles/TestFile2.asm", output[] = "TestFiles/output.txt";
 	char filename[] = "TestFiles/SB_test_getline.asm", output[] = "TestFiles/output.txt";
 	FILE *fp = NULL;
 	FILE *out = NULL;
 	int linePos = 0, i = 0, secText = 0, secData = 0;
-	struct equTab *equTable_Head = NULL;
-	struct equTab *tmp = NULL;
+	struct equ_tab *equTable_Head = NULL;
+	struct equ_tab *tmp = NULL;
 
 	if ((fp = fopen(filename, "r")) == NULL) {
         printf("404 Not Found!");
@@ -39,46 +38,40 @@ int main() {
     line[0] = '\0';
     lineOut[0] = '\0';
 
-    while (getLine(fp, line)) {
-	    if (strlen(line) > 0) {	
+    while (GetLine(fp, line)) {
+	    if (strlen(line) > 0) {
+	    	
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			printf("%s", line);
     			do {
-    				getLine(fp, aux); //checar EOF?
+    				GetLine(fp, aux); //checar EOF?
     			} while (strlen(aux) == 0);
     			strcat(line, " ");
     			printf("%s", line);
     			strcat(line, aux);
     			printf("%s", line);
     		}
+    		
 	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) {
-				/*while ((linePos = getToken(line, tokens[i], linePos)) && (i < 7)) {
-		    		i++;
-		    	}
-		    	if (isEQULabel(tokens[0]) && (strcmp(tokens[1], "EQU")) == 0) {
-		    		printf("isEQU\n ");
-		    		addEQU(&equTable_Head, tokens[0], tokens[2]);
-		    	}
-		    	printf("%s\n",equTable->label);*/
-		    	if(linePos = getToken(line, token1, linePos)) {
-		    		if(isLabel(token1)) {
-		    			linePos = getToken(line, token2, linePos);
+		    	if(linePos = GetToken(line, token1, linePos)) {
+		    		if(IsLabel(token1)) {
+		    			linePos = GetToken(line, token2, linePos);
 		    			if(!strcmp(token2,"EQU")) {
-		    				if(linePos = getToken(line, token2, linePos)) {
-		    					if(isValid(token2)) {
+		    				if(linePos = GetToken(line, token2, linePos)) {
+		    					if(IsValid(token2)) {
 		    						//checa se a label já está na tabela
-			    					tmp = searchEQU(equTable_Head, token1);
+			    					tmp = SearchEQU(equTable_Head, token1);
 			    					if(tmp != NULL) { //label já está na tabela
 			    						strcpy(tmp->value, token2); //redefine label
 			    					}
 			    					else {
-			    						tmp = searchEQU(equTable_Head, token2);
+			    						tmp = SearchEQU(equTable_Head, token2);
 			    						if(tmp != NULL) {
 			    							//nova label tem o mesmo valor de outra label
 			    							strcpy(token2, tmp->value);
 			    						}
-			    						addEQU(&equTable_Head, token1, token2);
+			    						AddEQU(&equTable_Head, token1, token2);
 			    						printf("Added %s to EQUTable\n\n",equTable_Head->label);
 									}
 								}
@@ -100,20 +93,21 @@ int main() {
 		    			tratar caso label = "EQU:" ou label é o nome de inst?
 		    		}*/
 		    	}
-		    }
-		    else {
+		    }	
+		    	    
+		    else {		    
 		    	if(strstr(line, "IF ") || strstr(line, " IF ") || strstr(line, " IF\n")) {
 		    		printf("isIF\n");
-		    		if(linePos = getToken(line, token1, linePos)) {
+		    		if(linePos = GetToken(line, token1, linePos)) {
 		    			if(!strcmp(token1, "IF")) {
-		    				if(linePos = getToken(line, token1, linePos)) {
-		    					tmp = searchEQU(equTable_Head, token1);
+		    				if(linePos = GetToken(line, token1, linePos)) {
+		    					tmp = SearchEQU(equTable_Head, token1);
 		    					if(tmp != NULL) { //found operand
 		    						//checks if there is more than one operand
-		    						if(!(linePos = getToken(line, token1, linePos))) {
+		    						if(!(linePos = GetToken(line, token1, linePos))) {
 		    							if(!strcmp(tmp->value,"0")) { //skip line if 0
 		    								//what if IF is at the last line?
-		    								getLine(fp, line);
+		    								GetLine(fp, line);
 		    								printf("skipping line: %s\n",line);
 		    							}
 		    							else {
@@ -145,10 +139,11 @@ int main() {
 		    			}*/
 		    		}
 		    	}
-		    	else {
+		    	
+		    	else {		    	
 		    		printf("isOther\n");
-		    		while (linePos = getToken(line, token1, linePos)) {
-	    				tmp = searchEQU(equTable_Head, token1);
+		    		while (linePos = GetToken(line, token1, linePos)) {
+	    				tmp = SearchEQU(equTable_Head, token1);
 	    				if(tmp != NULL) {
 		    				printf("found in table\n");
 		    				strcpy(token1, tmp->value);
@@ -162,14 +157,16 @@ int main() {
 		    		fprintf(out, "%s", lineOut);
 				   	printf("%s\n", lineOut);
 	    		}
+	    		
 	    	}
+	    	
 	    	i = 0;
 	    	lineOut[0] = '\0';
 	    	linePos = 0;
 	    }
     }
 
-    deleteEQU(equTable_Head);
+    DeleteEQU(equTable_Head);
     if ((fclose(fp) == 0) && (fclose(out) == 0)) {
     	printf("\nFiles closed.");
     }
@@ -177,9 +174,9 @@ int main() {
     return 0;
 }
 
-struct equTab *searchEQU(struct equTab *table, char *token) {
+struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
 
-    struct equTab* tmp = table;
+    struct equ_tab* tmp = table;
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
@@ -190,11 +187,11 @@ struct equTab *searchEQU(struct equTab *table, char *token) {
     return NULL; // Label not defined(?)
 }
 
-void addEQU(struct equTab **table, char *name, char *digit) {
+void AddEQU(struct equ_tab **table, char *name, char *digit) {
 
 	//struct equTab* tmp = table;
 	int i = 0;
-	struct equTab* new = (struct equTab*)malloc(sizeof(struct equTab));
+	struct equ_tab* new = (struct equ_tab*)malloc(sizeof(struct equ_tab));
 	for (i = 0; i < strlen(name); i++) {
 		if (name[i] == ':') {
 			new->label[i] = '\0';
@@ -206,9 +203,9 @@ void addEQU(struct equTab **table, char *name, char *digit) {
 	*table = new;
 }
 
-void deleteEQU(struct equTab *table) {
+void DeleteEQU(struct equ_tab *table) {
 
-    struct equTab* tmp;
+    struct equ_tab* tmp;
     while(table != NULL) {
     	tmp = table;
     	table = table->next;

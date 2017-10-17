@@ -1,4 +1,43 @@
-FILE *openFile(char *filename) {
+/******************************************************************
+* NAME:
+*
+*
+*
+* PURPOSE:
+*
+*
+*
+* GLOBAL VARIABLES:
+*
+*
+*
+* Variable		Type		Description
+* --------		----		-----------
+*
+*
+*
+* DEVELOPMENT HISTORY:
+*
+*
+*
+* Date	Author	Change Id	Release		Description Of Change
+* ----	------	---------	-------		---------------------
+*
+*
+*
+*******************************************************************/
+
+/*
+* Write the comment text here, in complete sentences.
+* Use block comments when there is more than one
+* sentence.
+*/
+
+/*
+* File opening. Attempts to open the file indicated by 
+* filename and displays error message if unsuccessful.
+*/
+FILE *OpenFile(char *filename) {
 
     FILE *fp;
 
@@ -6,10 +45,15 @@ FILE *openFile(char *filename) {
         printf("File not found: %s\n",filename);
         exit(1);
     }
+    
     return fp;
 }
 
-int getLine(FILE *fp, char *lineBuffer) {
+/*
+* Function GetLine
+* Working:
+*/
+int GetLine(FILE *fp, char *lineBuffer) {
 
 	char c;
 	int n = 0;
@@ -64,7 +108,7 @@ int getLine(FILE *fp, char *lineBuffer) {
 	return 0;
 }
 
-int getToken(char *lineBuffer, char *tokenBuffer, int p) {
+int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	int n = 0;
 	if (lineBuffer[p] == '\n') return 0;
@@ -80,14 +124,16 @@ int getToken(char *lineBuffer, char *tokenBuffer, int p) {
 	return ++p;
 }
 
-int isLabel(char *token) {
-
+int IsLabel(char *token) {
 
 	int i = 0;
+	
 	if(isdigit(token[i])) {
 		return 0;
 	}
+	
 	i++;
+	
 	while (token[i] != '\0') {
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			if((token[i] == ':') && (token[i+1] != '\0')) {
@@ -105,9 +151,10 @@ int isLabel(char *token) {
 	}
 }
 
-int isValid(char *token) {
+int IsValid(char *token) {
 
 	int i = 0;
+	
 	while (token[i] != '\0') {
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			printf("Invalid\n");
@@ -115,6 +162,7 @@ int isValid(char *token) {
 		}
 		i++;
 	}
+	
 	return 1;
 }
 

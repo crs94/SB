@@ -6,16 +6,17 @@
 int main(int argc, char *argv[]) {
 	
 	char usage[] = "Usage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n"
+	
 	FILE *fin, *fout;
 	//Declarar tabela de erros e de linhas
 	
 	if((argc != 4) || ((strcmp(argv[1], "-p")) && (strcmp(argv[1], "-m")) && (strcmp(argv[1], "-o")))) {
-		//checar extensão válida de argv[3]?
+		//checar extensão válida de argv[3]? escrever extensão correta mesmo assim?
 		printf("%s\n",usage);
 		return 0;
 	}
 
-    if(!(fin = openFile(argv[2]))) return 0;
+    if(!(fin = OpenFile(argv[2]))) return 0;
     fout = 
     
     if(!(preprocess(fp, error_tab))) {

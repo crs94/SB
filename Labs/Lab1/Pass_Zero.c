@@ -44,13 +44,13 @@ int main() {
         exit(1);
     }
 
-    while (getLine(fp, line)){
+    while (GetLine(fp, line)){
         printf("%s", line);
         linePos = 0;
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
             inMacro = 1;
-            if (linePos = getToken(line, token1, linePos)) {
-                if (isLabel(token1)) {
+            if (linePos = GetToken(line, token1, linePos)) {
+                if (IsLabel(token1)) {
                     firstMacro = 1;
                     printf("MACRO: %s\n", token1);
                     addMNT(&mntTable_Head, token1, NULL);
@@ -77,7 +77,7 @@ int main() {
             }
             else {
                 printf("not MACRO\n");
-                if (linePos = getToken(line, token1, linePos)) {
+                if (linePos = GetToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
                         printf("Found in table!\n");
