@@ -29,13 +29,12 @@
 
 /*
 * Write the comment text here, in complete sentences.
-* Use block comments when there is more than one
-* sentence.
+* Use block comments when there is more than one sentence.
 */
 
 /*
 * File opening. Attempts to open the file indicated by 
-* filename and displays error message if unsuccessful.
+* filename and displays an error message if unsuccessful.
 */
 FILE *OpenFile(char *filename) {
 
@@ -108,6 +107,7 @@ int GetLine(FILE *fp, char *lineBuffer) {
 	return 0;
 }
 
+//informar se token tem mais de 100 caracteres?
 int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	int n = 0;
@@ -165,4 +165,5 @@ int IsValid(char *token) {
 	
 	return 1;
 }
+
 
