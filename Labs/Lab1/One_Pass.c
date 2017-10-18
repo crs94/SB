@@ -17,13 +17,12 @@ struct replace_list_node {
 };
 
 struct sym_table_node {
-	char[101] label;
-	int address;
-	int defined;
-	struct replace_list_node *list; //this will keep offset position of undefined symbol
-	int vector; //zero until defined?
-	//int line; ?
-	struct sym_table_node *next;
+	char[101] label;					// Name of the label.
+	int address;						// Value of Location Counter when label was defined. -1 until defined
+	int defined;						// 1 if label definition was found. 0 otherwise.
+	struct replace_list_node *list; 	// This will keep offset position of undefined symbol.
+	int vector; 						// Size of vector defined with SPACE directive. Zero until defined.
+	struct sym_table_node *next;		// Pointer to the next node in the symbol table.
 };
 
 struct output_line {
@@ -37,9 +36,9 @@ void AddSym(struct sym_table_node **table, char *name, int address, int defined)
 void DeleteSymTable(struct sym_table_node *table);
 struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n);
-//AddLine(lineOut, head);
-//IsNumber(char *token);
-void IsHex(char *token);
+void AddLine(struct output_line *line, struct output_line **head);
+void ReplaceList(struct sym_table_node *node);
+
 
 int main Pass_One() {
 
@@ -80,9 +79,11 @@ int main Pass_One() {
     	label_count = 0;
     	linePos = 0;
     	replace = NULL;
-    	tmp_op = NULL; //why?
+    	//tmp_op = NULL; //why?
     	lineOut = (struct output_line*)malloc(size_of(struct output_line)); //free if finds an error?
-    	lineOut->op[1] = -1; //this will be tested before writing to file
+    	lineOut->opcode = -1
+    	lineOut->op[0] = lineOut->op[1] = -1; //this will be tested before writing to file
+    	lineOut->next = NULL;
     	while(linePos = GetToken(line, token1, linePos)) {
 
     		if(IsLabel(token1)) { //como detectar dois ou mais rótulos na mesma linha?
@@ -100,13 +101,15 @@ int main Pass_One() {
 							else { //Encontrou definição de uma label referenciada anteriormente.
 								tmp_sym->defined = 1;
 								tmp_sym->address = lc;
-								replace = tmp_sym; //Can't replace yet because of vector length.
+								replace = tmp_sym; 
+								//Can't replace yet because of vector length. will replace after the line is processed.
 							}
 						}
 						label_count++;
 					}
 					else {
 						printf("Linha %d. Erro: mais de uma label na mesma linha.\n", linec);
+						//como tratar este caso?
 					}
 				}
 				else {
@@ -118,6 +121,14 @@ int main Pass_One() {
 				if(IsValid(token1) {
 					tmp_op = SearchOp(opTable, token1);
 					if(tmp_op != NULL) { //found an operation
+						if(sec_data) {
+							printf("Linha %d. Erro: Instrução dentro da seção de dados.\n", linec);
+						}
+						else {
+							if(!sec_text) {
+								printf("Linha %d. Erro: Instrução fora da seção de texto.\n", linec);
+							}
+						}
 						lc+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						opr_count = 0;
@@ -162,7 +173,7 @@ int main Pass_One() {
 														lineOut->op[n-1]+=offset;
 													}
 													else {
-														printf("Linha %d. Erro: offset muito grande! %s.\n", linec, token1);
+														printf("Linha %d. Erro: offset muito grande! %s.\n", linec);
 													}
 												}
 												else {
@@ -194,6 +205,14 @@ int main Pass_One() {
 					else {
 						//Can SPACE work with vectors?
 						if(!strcmp(token1, "SPACE")) {
+							if(sec_text) {
+								printf("Linha %d. Erro: Diretiva dentro da seção de texto.\n", linec);
+							}
+							else {
+								if(!sec_data) {
+									printf("Linha %d. Erro: Diretiva fora da seção de dados.\n", linec);
+								}
+							}
 							//incrementa LC e processa
 							//inclui valor de vector no nodo apontado por replace
 							if(label_count == 1) {
@@ -203,6 +222,8 @@ int main Pass_One() {
 										if(IsNumber(token1) { //checks if token is a number
 											offset = atoi(token1);
 											tmp_sym->vector = offset;
+											lineOut->opcode = 15;
+											lineOut->op[1] = offset;
 										}
 										else {
 											printf("Linha %d. Erro: esperava-se um número após SPACE.", linec);
@@ -211,11 +232,8 @@ int main Pass_One() {
 
 									n++;
 								}
-								if(n == 0) {
-									printf("Linha %d. Erro: Diretiva SPACE sem operandos.\n", linec);
-								}
-								else {
-									if(n > 1) printf("Linha %d. Erro: número inválido de operandos.\n", linec);
+								if(n > 1) {
+									printf("Linha %d. Erro: número inválido de operandos.\n", linec);
 								}
 							}
 							else {
@@ -224,27 +242,32 @@ int main Pass_One() {
 						}
 						else {
 							if(!strcmp(token1, "CONST")) {
+								if(sec_text) {
+									printf("Linha %d. Erro: Diretiva dentro da seção de texto.\n", linec);
+								}
+								else {
+									if(!sec_data) {
+										printf("Linha %d. Erro: Diretiva fora da seção de dados.\n", linec);
+									}
+								}
 								//incrementa LC e processa
 								//deve aceitar números positivos e negativos (inteiros e hexadecimais)
 								if(label_count == 1) {
 									n = 0;
 									while(linePos = GetToken(line, token1, linePos)) {
 										if(n == 0) {
-											if(IsNumber(token1) { //checks if token is a number
-												offset = atoi(token1);
-												tmp_sym->vector = offset;
+											if(IsHex(token1)) {
+												offset = HexToInt(token1);
+												lineOut->opcode = 0;
+												lineOut->op[1] = offset;
 											}
 											else {
-												if(IsHex(token1)) {
-													if(IsNumber(token1) { //checks if token is a number
-														offset = atoi(token1);
-														tmp_sym->vector = offset;
-													}
-													else {
-														printf("Linha %d. Erro: esperava-se um número após CONST.", linec);
-													}
-												}	
-												else{
+												if(IsNumber(token1) { //checks if token is a number
+													offset = atoi(token1);
+													lineOut->opcode = 0;
+													lineOut->op[1] = offset;
+												}
+												else {
 													printf("Linha %d. Erro: esperava-se um número após CONST.", linec);
 												}
 											}
@@ -252,7 +275,7 @@ int main Pass_One() {
 										n++;
 									}
 									if(n == 0) {
-										printf("Linha %d. Erro: Diretiva SPACE sem operandos.\n", linec);
+										printf("Linha %d. Erro: Diretiva CONST sem operandos.\n", linec);
 									}
 									else {
 										if(n > 1) printf("Linha %d. Erro: número inválido de operandos.\n", linec);
@@ -264,37 +287,106 @@ int main Pass_One() {
 							}
 							else {
 								if(!strcmp(token1, "SECTION")) {
-								
+									if(label_count == 1) {
+										printf("Linha %d. Erro: Diretiva SECTION com Label.\n", linec);
+									}
+									else {	
+										n = 0;
+										while(linePos = GetToken(line, token1, linePos)) {
+											if(n == 0) {
+												if(IsValid(token1) { //checks if token is a number
+													if(!strcmp(token1, "TEXT")) {
+														if(!sec_text) {	
+															sec_text = 1;
+															sec_data = 0;
+															printf("Found TEXT Section.\n");
+														}
+														else {
+															printf("Linha %d. Erro: mais de uma seção TEXT.\n", linec);
+															//O que fazer com o resto da seção?
+														}
+													}
+													if(!strcmp(token1, "DATA")) {
+														if(!sec_data) {	
+															sec_data = 1;
+															sec_text = 0;
+															printf("Found TEXT Section.\n");
+														}
+														else {
+															printf("Linha %d. Erro: mais de uma seção TEXT.\n", linec);
+															//O que fazer com o resto da seção?
+														}
+													}
+													else {
+														printf("Linha %d. Erro: Operando da diretiva SECTION inválido.\n",linec);
+													}	
+												}
+												else {
+													printf("Linha %d. Erro: token inválido.", linec);
+												}
+											}
+
+											n++;
+										}
+										if(n == 0) {
+											printf("Linha %d. Erro: Diretiva SPACE sem operandos.\n", linec);
+										}
+										else {
+											if(n > 1) {
+												printf("Linha %d. Erro: número inválido de operandos.\n", linec);
+											}
+										}
+									} 
 								}
-								/*else {
-									erro? Misplaced token?
-								}*/
+								else { //primeiro token após label(se houver) não é instrução ou diretiva
+									printf("Linha %d. Erro: Token desconhecido %s. Esperava-se instrução ou diretiva.\n", linec, token1);
+								}
 							}
 						}
 					}
 				}
-				
-				/*else {
-					erro: token inválido?
-				}*/
-    		}
-    		if(n == tmp_op->operands) {
-				lineOut->next = NULL;
-				AddLine(lineOut, head);
-			}	
+				else {
+					printf("Linha %d. Erro: token inválido %s.\n", linec, token1);
+				}
+    		}	
     	}
     	
+    	if(lineOut->opcode != -1) {
+			AddLine(lineOut, head);
+		}
+    	
     	if(replace != NULL) {
-    		ReplaceList();
+    		ReplaceList(replace);
     	}
-		/*else {
-			else?
-		}*/
+    }
+    //checar se há labels indefinidas na symTable antes?
+    //WriteToFile();
+    while(lineOut->next != NULL) {
+    	if(lineOut->opcode > -1) {
+    		if(lineOut->opcode == 0) { //CONST
+    			printf("%d\n",lineOut->op[0]);
+    		}
+    		else {
+    			if(lineOut->opcode == 15) { //SPACE
+    				for(n = 0; n < lineOut->op[0]; n++) {
+    					printf("0 ");
+    				}
+    				printf("\n");
+    			}
+    			else {
+    				printf("%d %d ",lineOut->opcode, lineOut->op[0]);
+    				if(lineOut->op[1] > -1) {
+    					printf("%d ", lineOut->op[1]);
+    				}
+    				printf("\n");
+    			}
+    		}
+    	}
     }
 }
 
 
-//Found an undefined operand and need include in replace_list. includes at the front of list
+//Found an undefined operand and need to include it in replace_list. Includes at the front of list
 void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n) {
 	struct replace_list_node *tmp = node->list;
 	struct replace_list_node *new = (struct replace_list_node*)malloc(sizeof(struct replace_list_node));
@@ -302,6 +394,20 @@ void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n)
 	new->offset = 0;
 	new->next = node->list;
 	node->list=new;//does it work?
+}
+
+void ReplaceList(struct sym_table_node *node) {
+	struct replace_list_node *tmp = node->list;
+	while (tmp->next != NULL) {
+        tmp = tmp->next; //does it need to go after replacing? 
+		*tmp->replace = node->address + tmp->offset;
+	}
+	tmp = node->list
+    while(node->list != NULL) {
+    	tmp = node->list;
+    	node->list = node->list->next;
+    	free(tmp);
+    }
 }
 
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
@@ -378,14 +484,15 @@ int IsValidLabel(struct op_table_node *table[], char *token) {
 	return 1;
 }
 
-void IsHex(char *token) {
-	int i;
-	if((token[0] == '0') && (token[1] == 'X')) {
-		for(i = 0; i<strlen(token); i++) {
-			token[i] = token[i+2];
-		}
-		return 1;
+void AddLine(struct output_line *line, struct output_line **head) {
+	struct output_line *tmp = *head;
+	while (tmp->next != NULL) {
+        tmp = tmp->next;
 	}
-	return 0;
+    tmp->next = line;
+}
+
+void WriteObjectFile(FILE *fp, struct output_line *first) {
+
 }
 

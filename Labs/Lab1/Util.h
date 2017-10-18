@@ -162,8 +162,38 @@ int IsValid(char *token) {
 		}
 		i++;
 	}
-	
 	return 1;
 }
 
+//deve retornar 1 para números positivos e negativos
+int IsNumber(char *token) {
+	int i;
+	for(i = 0; i < strlen(token); i++) {
+		if(!isdigit(token[i]) return 0;
+	}
+	return 1;
+}
+
+int IsHex(char *token) {
+	int i;
+	if((token[0] == '0') && (token[1] == 'X')) {
+		for(i = 2; i<strlen(token); i++) {
+			if((token[i] < 0) || (token[i] > 15)) return 0;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+int HexToInt(char *token) {
+	int i = strlen(token);
+	int j = 0;
+	int sum = 0;
+	while(i > 0) {
+		sum+=((int)token[i]*(pow(16, j)));
+		i--;
+		j++;
+	}
+	return sum;
+}
 
