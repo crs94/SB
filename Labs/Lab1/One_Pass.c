@@ -1,34 +1,73 @@
+/***********************************************************************
+*
+* FILE NAME: One_Pass.c
+*
+*
+* PURPOSE:
+*
+*
+* FILE REFERENCES:
+*
+*
+* EXTERNAL VARIABLES:
+*
+* Name				Type		IO		Description
+* -------------		-------		--		-----------------------------
+*
+*
+* EXTERNAL REFERENCES:
+*
+* Name					Description
+* -------------			-----------------------------
+*
+*
+* ABNORMAL TERMINATION CONDITIONS, ERROR AND WARNING MESSAGES:
+*	none
+*
+*
+* ASSUMPTIONS, CONSTRAINTS, RESTRICTIONS: none
+*
+*
+* NOTES:
+*
+*
+***********************************************************************/
+
 #pragma warning(disable: 4996)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "Util.h"
 
-struct op_table_node {
-	char *name;
-	int opcode;
-	int operands;
+struct op_table_node {					// Struct to store a node of the operations table
+	char *name;							// Name of the operation
+	int opcode;							// Opcode
+	int operands;						// Number of operands
 };
 
-struct replace_list_node {
-	int *replace;
-	int offset;
-	struct replace_list_node *next;
+/*struct dir_table_node {					//
+	char *name;							//
+};*/
+
+struct replace_list_node {				//
+	int *replace;						//
+	int offset;							//
+	struct replace_list_node *next;		//
 };
 
-struct sym_table_node {
-	char[101] label;					// Name of the label.
+struct sym_table_node {					// Struct to store a node of the symbol table
+	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
-	int defined;						// 1 if label definition was found. 0 otherwise.
-	struct replace_list_node *list; 	// This will keep offset position of undefined symbol.
-	int vector; 						// Size of vector defined with SPACE directive. Zero until defined.
-	struct sym_table_node *next;		// Pointer to the next node in the symbol table.
+	int defined;						// 1 if label definition was found. 0 otherwise
+	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
+	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
+	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
-struct output_line {
-	int opcode;
-	int op[2];
-	struct output_line *next;
+struct output_line {					//
+	int opcode;							//
+	int op[2];							//
+	struct output_line *next;			//
 };
 
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
@@ -40,19 +79,30 @@ void AddLine(struct output_line *line, struct output_line **head);
 void ReplaceList(struct sym_table_node *node);
 
 
-int main Pass_One() {
+int main() {
 
-	char line[601];
-	char token1[101], token2[101];
-	char filename[] = "TestFiles/TestFile2.asm";
-	int linePos = 0, i = 0, secText = 0, secData = 0, offset = 0, lc = 0, linec = 0, opr_count = 0;
-	FILE *fp = NULL;
+	char line[LINE_LENGTH];
+	char token1[TOKEN_LENGTH];
+	char input_file[] = "TestFiles/TestFile2.asm";
+	char output_file[] = "TestFiles/Object.txt";
+	int linePos = 0;
+	int i = 0;
+	int secText = 0;
+	int secData = 0; 
+	int offset = 0;
+	int lc = 0;
+	int line_count = 0;
+	int label_count = 0;
+	int opr_count = 0;
+	FILE *fp_in = NULL;
+	FILE *fp_out = NULL;
 	struct output_line *head = NULL;
 	struct output_line *lineOut; //linha atual
 	struct sym_table_node *symTable = NULL;
 	struct sym_table_node *tmp_sym = NULL;
 	struct sym_table_node *replace = NULL;
 	struct op_table_node *tmp_op = NULL;
+	struct dir_table_node dirTable[3] = {"SPACE", "CONST", "SECTION"}
 	struct op_table_node[14] opTable = {"ADD", 1, 1,
 										"SUB", 2, 1,
 										"MULT", 3, 1,
@@ -69,9 +119,14 @@ int main Pass_One() {
 										"STOP", 14, 0 
 										};
 
-	if ((fp = fopen(filename, "r")) == NULL) {
-        printf("404 Not Found!");
-        exit(1);
+	if ((fp_in = fopen(input_file, "r")) == NULL) {
+		printf("File not found.\n");
+		return 0;
+	} 
+
+	if ((fp_out = fopen(output_file, "w")) == NULL) {
+        printf("File not found!\n");
+        return 0;
     }
     
     while (GetLine(fp, line)) {
@@ -86,7 +141,7 @@ int main Pass_One() {
     	lineOut->next = NULL;
     	while(linePos = GetToken(line, token1, linePos)) {
 
-    		if(IsLabel(token1)) { //como detectar dois ou mais rótulos na mesma linha?
+    		if(token1[strlen(token1) - 1] == ':') {
 				if(IsValidLabel(opTable, token1)) {
 					if(label_count == 0) {
 						tmp_sym = SearchSym(symTable, token1);
@@ -96,7 +151,7 @@ int main Pass_One() {
 						}
 						else {
 							if(tmp_sym->defined) {
-								printf("Linha %d. Erro: Label redefinida\n", linec);
+								printf("Linha %d. Erro: Label redefinida.\n", linec);
 							}
 							else { //Encontrou definição de uma label referenciada anteriormente.
 								tmp_sym->defined = 1;
@@ -132,24 +187,24 @@ int main Pass_One() {
 						lc+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						opr_count = 0;
-						tmp_sym = NULL;
-						//gets operands and any other tokens in the line
+						// Gets operands and any other tokens in the line
 						while(linePos = GetToken(line, token1, linePos)) { 
 							if(IsValid(token1) || 
-							((n == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
-								if(n < tmp_op->operands) {
+							// I think this won't work when firt operand of COPY has offset
+							((opr_count == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
+								if(opr_count < tmp_op->operands) {
 									tmp_sym = SearchSym(symTable, token1);
 									if(tmp_sym != NULL) { //found operand in symTable
 										if(tmp_sym->defined) {
 											lineOut->op[n] = tmp_sym->address;
 										}
 										else {
-											lineOut->op[n] = -1;
-											AddReplace(tmp_sym, lineOut, n);	
+											lineOut->op[opr_count] = -1;
+											AddReplace(tmp_sym, lineOut, opr_count);	
 										}
 									}
 									else {
-										//forward reference
+										// First forward reference
 										AddSym(&symTable, token1, -1, 0);
 										lineOut->op[n] = -1;
 										AddReplace(symTable, lineOut, n);
@@ -159,18 +214,17 @@ int main Pass_One() {
 								else {
 									printf("Linha %d. Erro: número inválido de operandos em %s.\n", linec, tmp_op->name);
 								}
-								opr_count++; //em que ponto(s) incrementar n?
+								opr_count++; //em que ponto(s) incrementar?
 							}
-							//falta tratar virgulas em COPY
 							else {
-								if((!strcmp(token1, "+")) && (n>0) && (n <= tmp_op->operands)) {
+								if((!strcmp(token1, "+")) && (opr_count > 0) && (opr_count <= tmp_op->operands)) {
 									if(tmp_sym != NULL) { //if previous token was an operand
 										if(linePos = GetToken(line, token1, linePos)) {
 											if(IsNumber(token1) { //checks if token is a number
 												offset = atoi(token1);
 												if(tmp_sym->defined) { //previous operand is defined in symTable
 													if(offset <= tmp_sym->vetor) {
-														lineOut->op[n-1]+=offset;
+														lineOut->op[opr_count-1]+=offset;
 													}
 													else {
 														printf("Linha %d. Erro: offset muito grande! %s.\n", linec);
@@ -202,6 +256,7 @@ int main Pass_One() {
 						
 					}
 					
+					// Tentar "enxugar" essa parte
 					else {
 						//Can SPACE work with vectors?
 						if(!strcmp(token1, "SPACE")) {
@@ -216,9 +271,9 @@ int main Pass_One() {
 							//incrementa LC e processa
 							//inclui valor de vector no nodo apontado por replace
 							if(label_count == 1) {
-								n = 0;
+								i = 0;
 								while(linePos = GetToken(line, token1, linePos)) {
-									if(n == 0) {
+									if(i == 0) {
 										if(IsNumber(token1) { //checks if token is a number
 											offset = atoi(token1);
 											tmp_sym->vector = offset;
@@ -229,10 +284,9 @@ int main Pass_One() {
 											printf("Linha %d. Erro: esperava-se um número após SPACE.", linec);
 										}
 									}
-
-									n++;
+									i++;
 								}
-								if(n > 1) {
+								if(i > 1) {
 									printf("Linha %d. Erro: número inválido de operandos.\n", linec);
 								}
 							}
@@ -360,34 +414,13 @@ int main Pass_One() {
     	}
     }
     //checar se há labels indefinidas na symTable antes?
-    //WriteToFile();
-    while(lineOut->next != NULL) {
-    	if(lineOut->opcode > -1) {
-    		if(lineOut->opcode == 0) { //CONST
-    			printf("%d\n",lineOut->op[0]);
-    		}
-    		else {
-    			if(lineOut->opcode == 15) { //SPACE
-    				for(n = 0; n < lineOut->op[0]; n++) {
-    					printf("0 ");
-    				}
-    				printf("\n");
-    			}
-    			else {
-    				printf("%d %d ",lineOut->opcode, lineOut->op[0]);
-    				if(lineOut->op[1] > -1) {
-    					printf("%d ", lineOut->op[1]);
-    				}
-    				printf("\n");
-    			}
-    		}
-    	}
-    }
+    WriteToFile(fout, head);
+    
 }
 
 
 //Found an undefined operand and need to include it in replace_list. Includes at the front of list
-void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n) {
+static void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n) {
 	struct replace_list_node *tmp = node->list;
 	struct replace_list_node *new = (struct replace_list_node*)malloc(sizeof(struct replace_list_node));
 	new->replace = outLine->op[n];//does it work?
@@ -396,7 +429,7 @@ void AddReplace(struct sym_table_node *node, struct output_line *outLine, int n)
 	node->list=new;//does it work?
 }
 
-void ReplaceList(struct sym_table_node *node) {
+static void ReplaceList(struct sym_table_node *node) {
 	struct replace_list_node *tmp = node->list;
 	while (tmp->next != NULL) {
         tmp = tmp->next; //does it need to go after replacing? 
@@ -410,7 +443,7 @@ void ReplaceList(struct sym_table_node *node) {
     }
 }
 
-struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
+static struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
 	struct sym_table_node* tmp = table;
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
@@ -422,7 +455,7 @@ struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
     return NULL; // Label not defined(?)
 }
 
-void AddSym(struct sym_table_node **table, char *name, int address, int defined) {
+static void AddSym(struct sym_table_node **table, char *name, int address, int defined) {
 			
 	int i = strlen(name);
 	struct sym_table_node* new = (struct sym_table_node*)malloc(sizeof(struct sym_table_node));
@@ -440,7 +473,7 @@ void AddSym(struct sym_table_node **table, char *name, int address, int defined)
 	*table = new;
 }
 
-void DeleteSymTable(struct sym_table_node *table) {
+static void DeleteSymTable(struct sym_table_node *table) {
 	struct sym_table_node* tmp;
     while(table != NULL) {
     	tmp = table;
@@ -449,7 +482,7 @@ void DeleteSymTable(struct sym_table_node *table) {
     }
 }
 
-struct op_table_node *SearchOp(struct op_table_node *table, char *token) {
+static struct op_table_node *SearchOp(struct op_table_node *table, char *token) {
 	int n;
 	struct op_table_node* tmp = NULL;
     for(n = 0; n < 14; n++) {
@@ -459,8 +492,14 @@ struct op_table_node *SearchOp(struct op_table_node *table, char *token) {
 }
 
 int IsValidLabel(struct op_table_node *table[], char *token) {
+	
+	int i = 0;
 
-	int i = strlen(token);
+	if(isdigit(token[i])) {
+		return 0;
+	}
+	
+	i = strlen(token);
 	
 	if(token[i-1] == ':') {
 		token[i-1] = '\0';
@@ -484,7 +523,7 @@ int IsValidLabel(struct op_table_node *table[], char *token) {
 	return 1;
 }
 
-void AddLine(struct output_line *line, struct output_line **head) {
+static void AddLine(struct output_line *line, struct output_line **head) {
 	struct output_line *tmp = *head;
 	while (tmp->next != NULL) {
         tmp = tmp->next;
@@ -492,7 +531,28 @@ void AddLine(struct output_line *line, struct output_line **head) {
     tmp->next = line;
 }
 
-void WriteObjectFile(FILE *fp, struct output_line *first) {
-
+static void WriteObjectFile(FILE *fp, struct output_line *first) {
+	while(first->next != NULL) {
+    	if(first->opcode > -1) {
+    		if(first->opcode == 0) { //CONST
+    			fprintf(fp, "%d\n", first->op[0]);
+    		}
+    		else {
+    			if(first->opcode == 15) { //SPACE
+    				for(n = 0; n < first->op[0]; n++) {
+    					fprintf(fp, "0 ");
+    				}
+    				fprintf(fp, "\n");
+    			}
+    			else {
+    				fprintf(fp, "%d %d ", first->opcode, first->op[0]);
+    				if(first->op[1] > -1) {
+    					fprintf(fp, "%d ", first->op[1]);
+    				}
+    				fprintf(fp, "\n");
+    			}
+    		}
+    	}
+    }
 }
 

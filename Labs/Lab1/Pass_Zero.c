@@ -1,3 +1,40 @@
+/***********************************************************************
+*
+* FILE NAME: Pass_Zero.c
+*
+*
+* PURPOSE: 	This function performs macro expansion in the assembly
+*			procedure. It is designed to be executed after the original
+*			source code was preprocessed using Preprocess.c
+*
+*
+* FILE REFERENCES:
+*
+*
+* EXTERNAL VARIABLES:
+*
+* Name				Type		IO		Description
+* -------------		-------		--		-----------------------------
+*
+*
+* EXTERNAL REFERENCES:
+*
+* Name					Description
+* -------------			-----------------------------
+*
+*
+* ABNORMAL TERMINATION CONDITIONS, ERROR AND WARNING MESSAGES:
+*	none
+*
+*
+* ASSUMPTIONS, CONSTRAINTS, RESTRICTIONS: none
+*
+*
+* NOTES:
+*
+*
+***********************************************************************/
+
 #pragma warning(disable: 4996)
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,25 +60,34 @@ void deleteMNT(struct MNT *table);
 
 int main() {
 
-    char line[601], lineOut[601];
-	char token1[101], token2[101];
-	char filename[] = "TestFiles/fatorial.asm", output[] = "TestFiles/output.txt";
-    FILE *fp = NULL;
-	FILE *out = NULL;
-	int linePos = 0, i = 0, secText = 0, secData = 0, inMacro = 0, firstMacro = 0;
+    char line[LINE_LENGTH];
+	char lineOut[LINE_LENGTH];
+	char token1[TOKEN_LENGTH];
+	char token2[TOKEN_LENGTH];
+	char input_file[] = "TestFiles/fatorial.asm"; // To be replaced by output from preprocess
+	char output_file[] = "TestFiles/output_macro.txt";
+	int linec = 0;
+	int linePos = 0;
+	int secText = 0;
+	int secData = 0;
+	int i = 0;
+	int inMacro = 0;
+	int firstMacro = 0;
+	FILE *fp_in = NULL;
+	FILE *fp_out = NULL;
 	struct MDT *mdtTable_Head = NULL;
     struct MDT *tmpMDT = NULL;
     struct MNT *mntTable_Head = NULL;
 	struct MNT *tmpMNT = NULL;
 
-    if ((fp = fopen(filename, "r")) == NULL) {
-        printf("404 Not Found!");
-        exit(1);
-    }
+    if ((fp_in = fopen(input_file, "r")) == NULL) {
+		printf("File not found.\n");
+		return 0;
+	} 
 
-    if ((out = fopen(output, "w")) == NULL) {
-        printf("Could open!");
-        exit(1);
+	if ((fp_out = fopen(output_file, "w")) == NULL) {
+        printf("File not found!\n");
+        return 0;
     }
 
     while (GetLine(fp, line)){
