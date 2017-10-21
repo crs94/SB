@@ -43,6 +43,9 @@
 #include <string.h>
 #include "Util.h"
 
+#define LINE_LENGTH 560
+#define TOKEN_LENGTH 101
+
 /* 
  *This structure holds the symbol/label defined in an EQU directive
  * and the value by which it is to be replaced.
@@ -62,20 +65,25 @@ int main() {
 
 	char line[LINE_LENGTH];
 	char lineOut[LINE_LENGTH];
-	char aux[LINE_LENGTH]; // Necessary?
+	//char aux[LINE_LENGTH]; // Necessary?
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
+	//char input_file[] = "TestFiles/fatorial.asm";
 	char input_file[] = "TestFiles/SB_test_getline.asm"; // To be replaced by argv[2]
 	char output_file[] = "TestFiles/output.txt";
 	int linec = 0;
+	int linem = 0;
 	int linePos = 0;
 	int secText = 0;
 	int secData = 0;
+	int endFile = 0;
 	int i = 0;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
 	struct equ_tab *equTable_Head = NULL;
 	struct equ_tab *tmp = NULL;
+	struct fileLines *linesTable_Head = NULL;
+	struct fileLines *linesTmp = NULL;
 
 	if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
@@ -87,35 +95,58 @@ int main() {
         return 0;
     }
 
-    line[0] = '\0';		// Why did we do this?
-    lineOut[0] = '\0';	// Why did we do this?
+    line[0] = '\0';
+    lineOut[0] = '\0';
 
+    while ((GetLine(fp_in, line)) || (strlen(line) > 0)) {
+    	linec++; // Increments line counter
+		addLines(&linesTable_Head, linec, linec); // Adds line in line reference table
+
+<<<<<<< HEAD
     while(GetLine(fp_in, line)) {
     	// Increments line counter
     	linec++;	
+=======
+		/*
+		* If line is not only blanks and/or '\n'
+		* the function tries to identify its parts
+		*/
+>>>>>>> b545fcaf987673650293effe3717699063fddf37
 	    if (strlen(line) > 0) {
-	    	
-	    	// This piece of code needs to be improved. Perhaps count spaces in line instead?
+	    	/*
+	    	* Despite the rest of the line, if the last thing
+	    	* is a label, one must concatenate its content
+	    	* with the content found on the next valid line.
+	    	* Deal with errors on passage one
+	    	*/
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
+    			modifyLines(linesTable_Head, linec, 0);
     			printf("%s", line);
     			do {
-    				GetLine(fp, aux); //checar EOF?
-    			} while (strlen(aux) == 0);
-    			strcat(line, " ");
-    			printf("%s", line);
-    			strcat(line, aux);
-    			printf("%s", line);
+    				// Repeat while line == (blanks and/or '\n')
+    				if (!GetLine(fp_in, lineOut)) {
+    					endFile = 1;
+    					break;
+    				}
+    				linec++;
+					addLines(&linesTable_Head, linec, 0);
+    			} while (strlen(lineOut) == 0);
+    			if (!endFile) {
+	    			strcat(line, " ");
+	    			printf("%s", line);
+	    			strcat(line, lineOut);
+	    			printf("%s", line);
+	    		}
+	    		else printf("Line only has label.\n");
     		}
     		
     		/*
-    		 *	Insert brief explanation of this section.
-    		 */
-	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) { // is there a better way?
-	    	
-	    //inserir linha-offset na tabela de linhas
-	    
-		    	if(linePos = GetToken(line, token1, linePos)) {
+    		* If line has EQU directive
+    		*/
+	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) {
+	    		modifyLines(linesTable_Head, linec, 0);
+	    		if(linePos = GetToken(line, token1, linePos)) {
 		    		// Checks if first token is a valid label
 		    		if(IsLabel(token1)) {
 		    			// Checks if there is another token in the line
@@ -171,12 +202,10 @@ int main() {
 		    	    
 		    else {
 		    	/*
-    		 	 *	Insert brief explanation of this section.
+    		 	 *	Else, if line has IF directive
     		  	 */
 		    	if(strstr(line, "IF ") || strstr(line, " IF ") || strstr(line, " IF\n")) {
-		    	
-		    //inserir linha-offset na tabela de linhas
-		    	
+		    		modifyLines(linesTable_Head, linec, 0);
 		    		if(linePos = GetToken(line, token1, linePos)) {
 		    			// Checks if first token is an IF
 		    			if(!strcmp(token1, "IF")) {
@@ -185,16 +214,18 @@ int main() {
 		    					// Seaches for the operand in EQU table
 		    					tmp = SearchEQU(equTable_Head, token1);
 		    					// Operand was found in the table or is a zero or is a one
-		    					if((tmp != NULL) || (!strcmp(token1, '0')) || (!strcmp(token1, '1'))) {
+		    					if((tmp != NULL) || (!strcmp(token1, "0")) || (!strcmp(token1, "1"))) {
 		    						// Checks if there is more than one operand
 		    						if(!(linePos = GetToken(line, token1, linePos))) {
 		    							// Skips line if operand is a zero
-		    							if((!strcmp(tmp->value,"0")) || (!strcmp(token1, '0'))) {
-		    								GetLine(fp, line);
+		    							if((!strcmp(tmp->value, "0")) || (!strcmp(token1, "0"))) {
+		    								GetLine(fp_in, line);
+		    								linec++;
+		    								addLines(&linesTable_Head, linec, 0);
 		    							}
 		    							else {
 		    								// Checks if operand is not a one
-		    								if((strcmp(tmp->value,"1")) || (strcmp(token1, '1'))) {
+		    								if((strcmp(tmp->value, "1")) || (strcmp(token1, "1"))) {
 												printf("Line %d. Error: Operand of IF directive must be 0 or 1.\n", linec);
 		    								}
 		    							}
@@ -233,8 +264,10 @@ int main() {
 	    				strcat(lineOut, token1);
 	    				strcat(lineOut, " ");
 				   	}
-				   	lineOut[strlen(lineOut) - 1] = '\n' //what if line is full?
+				   	lineOut[strlen(lineOut) - 1] = '\n'; //what if line is full?
 		    		fprintf(fp_out, "%s", lineOut);
+		    		linem++;
+		    		modifyLines(linesTable_Head, linec, linem);
 	    		}
 	    		
 	    	}
@@ -243,10 +276,18 @@ int main() {
 	    	lineOut[0] = '\0';
 	    	linePos = 0;
 	    }
+	    /*
+	    * Else, if line only has blanks and/or '\n'
+	    * the table that stores the references for the
+	    * lines is modified so the actual reference
+	    * is for a non existent line on the output file
+	    */
+	    else modifyLines(linesTable_Head, linec, 0);
     }
 
     DeleteEQU(equTable_Head);
-    if ((fclose(fp) == 0) && (fclose(out) == 0)) { // What to do if error occurs?
+    deleteLines(linesTable_Head);
+    if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) { // What to do if error occurs?
     	printf("\nFiles closed.");
     }
 

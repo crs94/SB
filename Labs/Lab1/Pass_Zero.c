@@ -41,6 +41,9 @@
 #include <string.h>
 #include "Util.h"
 
+//#define LINE_LENGTH 560
+//#define TOKEN_LENGTH 101
+
 struct MNT {
     char label[101];
     struct MDT *begin;
@@ -79,6 +82,8 @@ int main() {
     struct MDT *tmpMDT = NULL;
     struct MNT *mntTable_Head = NULL;
 	struct MNT *tmpMNT = NULL;
+    struct fileLines *linesTable_Head = NULL;
+    struct fileLines *linesTmp = NULL;
 
     if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
@@ -90,7 +95,7 @@ int main() {
         return 0;
     }
 
-    while (GetLine(fp, line)){
+    while (GetLine(fp_in, line)){
         printf("%s", line);
         linePos = 0;
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
@@ -128,21 +133,29 @@ int main() {
                     if (tmpMDT != NULL) {
                         printf("Found in table!\n");
                         while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
-                            fprintf(out, "%s\n", tmpMDT->line);
+                            fprintf(fp_out, "%s\n", tmpMDT->line);
                             tmpMDT = tmpMDT->next;
                         }
                         printf("End of MACRO\n");
                     }
-                    else fprintf(out, "%s", line);
+                    else fprintf(fp_out, "%s", line);
                 }
             }
         }
         printf("EOL\n\n");
     }
 
+    linesTmp = linesTable_Head;
+    printf("This is the line table:\n");
+    while (linesTmp != NULL) {
+        printf("%d\t%d\n", linesTmp->lineNum, linesTmp->lineMod);
+        linesTmp = linesTmp->next;
+    }
+
     deleteMDT(mdtTable_Head);
     deleteMNT(mntTable_Head);
-    if ((fclose(fp) == 0) && (fclose(out) == 0)) {
+    deleteLines(linesTable_Head);
+    if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
     	printf("\nFiles closed.");
     }
 
