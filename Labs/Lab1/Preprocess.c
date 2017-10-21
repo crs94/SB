@@ -90,7 +90,7 @@ int main() {
     line[0] = '\0';		// Why did we do this?
     lineOut[0] = '\0';	// Why did we do this?
 
-    while (GetLine(fp_in, line)) {
+    while(GetLine(fp_in, line)) {
     	// Increments line counter
     	linec++;	
 	    if (strlen(line) > 0) {

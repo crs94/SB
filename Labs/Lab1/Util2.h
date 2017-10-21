@@ -41,13 +41,21 @@
 #define LINE_LENGTH 560
 #define TOKEN_LENGTH 101
 
-struct fileLines {
-    int lineNum;
-    int lineMod;
-    int macroOnly;
-    //char line[601];
-    struct fileLines *next;
-};
+
+int GetLine(FILE *fp, char *lineBuffer);
+
+//int GetToken(char *lineBuffer, char *tokenBuffer, int p);
+int GetToken2(char *lineBuffer, char *tokenBuffer, int *p);
+
+int IsLabel(char *token);
+
+int IsValid(char *token);
+
+int IsNumber(char *token);
+
+int IsHex(char *token);
+
+int HexToInt(char *token);
 
 /*
  * This function 
@@ -109,6 +117,7 @@ int GetLine(FILE *fp, char *lineBuffer) {
 }
 
 //informar se token tem mais de 100 caracteres?
+/*
 int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	int n = 0;
@@ -123,6 +132,22 @@ int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
 
 	if (lineBuffer[p] == '\n') return p;
 	return ++p;
+}*/
+
+int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
+	printf("In GetToken2\n");
+	int n = 0;
+	if (lineBuffer[(*p)] == '\n') return 0;
+
+	while ((!isspace(lineBuffer[(*p)])) && (n < 100)) {
+		tokenBuffer[n] = lineBuffer[(*p)];
+		n++;
+		(*p)++;
+	}
+	tokenBuffer[n] = '\0';
+	printf("Token: %s\n", tokenBuffer);
+	if (lineBuffer[(*p)] != '\n') (*p)++;
+	return 1;
 }
 
 int IsLabel(char *token) {
@@ -167,7 +192,9 @@ int IsValid(char *token) {
 int IsNumber(char *token) {
 	int i;
 	for(i = 0; i < strlen(token); i++) {
-		if(!isdigit(token[i]) return 0;
+		if(!isdigit(token[i])) {
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -188,114 +215,18 @@ int IsHex(char *token) {
 
 int HexToInt(char *token) {
 
-	int i = strlen(token);
-	int j = 0;
-	int sum = 0;
+	//int i = strlen(token);
+	//int j = 0;
+	int num = 0;
 	
-	while(i > 0) {
-		sum+=((int)token[i]*(pow(16, j)));
+	/*while(i > 0) {
+		sum+=(token[i]*(pow(16, j)));
 		i--;
 		j++;
-	}
+	}*/
+	sscanf(token, "%x", num);
+	sprintf(token, "%d", num);
 	
-	return sum;
+	return num;
 }
 
-
-/*
- * Add lines at the end of the table
- * It is essentially used during Preprocess to create the table
- */
-void addLines(struct fileLines *table, int original, int modified) {
-
-	struct MDT* tmp = *table;
-    struct MDT* before = NULL;
-	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-
-    new->lineNum = original;
-    new->lineMod = modified;
-    new->macroOnly = 0;
-    new->next = NULL;
-
-    // If the table is empty, insert first node
-	if (*table == NULL) {
-        *table = new;
-        return;
-    }
-
-    // Else, search for empty space
-    while (tmp != NULL) {
-        before = tmp;
-        tmp = tmp->next;
-	}
-    before->next = new;
-}
-
-/*
- * Inserts lines in the middle of the table
- * It is used essentially during Pass_Zero to add the references of
- * the lines of a macro definition in the middle of the code
- */
-int insertLines(struct fileLines *table, int modified, int macroDef) {
-
-    struct fileLines* tmp = searchLines(table, modified-1);
-    struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
-
-    if (tmp != NULL) {
-        new->lineNum = 0;
-        new->lineMod = modified;
-        new->macroOnly = macroDef;
-        new->next = tmp->next;
-        tmp->next = new;
-
-        return modified;
-    }
-    return 0;
-}
-
-/*
- * Searches for lines in the table
- * It is used to find a given line addressed by the variable modified
- */
-struct fileLines *searchLines(struct fileLines *table, int modified) {
-
-    struct fileLines* tmp = table;
-
-    // Searches whole table until correct modified line is found
-    // or until the end is reached
-    while ((tmp != NULL)) {
-    	printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
-        if (!strcmp(tmp->lineMod, modified)) {
-        	return tmp;
-        }
-        tmp = tmp->next;
-    }
-    return NULL;
-}
-
-/*
- * Modifies lines in the table
- * It is used to modify the values of the lines as the lines of the
- * original file are modified throughout the program
- */
-int modifyLines(struct fileLines *table, int modified) {
-
-    struct fileLines* tmp = searchLines(table, modified);
-
-    if (tmp != NULL) {
-        tmp->lineMod = modified;
-        return modified;
-    }
-    return -1;
-}
-
-// Deletes the table
-void deleteLines(struct fileLines *table) {
-
-    struct fileLines* tmp;
-    while(table != NULL) {
-    	tmp = table;
-    	table = table->next;
-    	free(tmp);
-    }
-}
