@@ -38,14 +38,17 @@
  * Use block comments when there is more than one sentence.
  */
 
+#pragma warning(disable: 4996)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #define LINE_LENGTH 560
 #define TOKEN_LENGTH 101
 
 struct fileLines {
     int lineNum;
     int lineMod;
-    int macroOnly;
-    //char line[601];
     struct fileLines *next;
 };
 
@@ -102,8 +105,8 @@ int GetLine(FILE *fp, char *lineBuffer) {
 	else {
 		lineBuffer[0] = '\0';
 	}
-	//if ((n == 1) && (c == ';')) lineBuffer[0] = '\0';
-
+	if (c == EOF) printf("%s\n", lineBuffer);
+	
 	if (c != EOF) return 1;
 	return 0;
 }
@@ -167,7 +170,7 @@ int IsValid(char *token) {
 int IsNumber(char *token) {
 	int i;
 	for(i = 0; i < strlen(token); i++) {
-		if(!isdigit(token[i]) return 0;
+		if (!isdigit(token[i])) return 0;
 	}
 	return 1;
 }
@@ -204,17 +207,16 @@ int HexToInt(char *token) {
 
 /*
  * Add lines at the end of the table
- * It is essentially used during Preprocess to create the table
+ * 	It is essentially used during Preprocess to create the table
  */
-void addLines(struct fileLines *table, int original, int modified) {
+void addLines(struct fileLines **table, int original, int modified) {
 
-	struct MDT* tmp = *table;
-    struct MDT* before = NULL;
-	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
+	struct fileLines* tmp = *table;
+    struct fileLines* before = NULL;
+	struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
 
     new->lineNum = original;
     new->lineMod = modified;
-    new->macroOnly = 0;
     new->next = NULL;
 
     // If the table is empty, insert first node
@@ -232,30 +234,8 @@ void addLines(struct fileLines *table, int original, int modified) {
 }
 
 /*
- * Inserts lines in the middle of the table
- * It is used essentially during Pass_Zero to add the references of
- * the lines of a macro definition in the middle of the code
- */
-int insertLines(struct fileLines *table, int modified, int macroDef) {
-
-    struct fileLines* tmp = searchLines(table, modified-1);
-    struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
-
-    if (tmp != NULL) {
-        new->lineNum = 0;
-        new->lineMod = modified;
-        new->macroOnly = macroDef;
-        new->next = tmp->next;
-        tmp->next = new;
-
-        return modified;
-    }
-    return 0;
-}
-
-/*
  * Searches for lines in the table
- * It is used to find a given line addressed by the variable modified
+ * 	It is used to find a given line addressed by the variable modified
  */
 struct fileLines *searchLines(struct fileLines *table, int modified) {
 
@@ -265,7 +245,7 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
     // or until the end is reached
     while ((tmp != NULL)) {
     	printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
-        if (!strcmp(tmp->lineMod, modified)) {
+        if (tmp->lineMod == modified) {
         	return tmp;
         }
         tmp = tmp->next;
@@ -274,13 +254,36 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
 }
 
 /*
- * Modifies lines in the table
- * It is used to modify the values of the lines as the lines of the
- * original file are modified throughout the program
+ * Inserts lines in the middle of the table
+ * 	It is used essentially during Pass_Zero to add the references of
+ * 	the lines of a macro definition in the middle of the code
  */
-int modifyLines(struct fileLines *table, int modified) {
+int insertLines(struct fileLines *table, int original, int modified) {
 
-    struct fileLines* tmp = searchLines(table, modified);
+    struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
+    struct fileLines* tmp = NULL;
+    tmp = searchLines(table, modified);
+
+    if (tmp != NULL) {
+        new->lineNum = 0;
+        new->lineMod = modified;
+        new->next = tmp->next;
+        tmp->next = new;
+
+        return modified;
+    }
+    return 0;
+}
+
+/*
+ * Modifies lines in the table
+ * 	It is used to modify the values of the lines as the lines of the
+ * 	original file are modified throughout the program
+ */
+int modifyLines(struct fileLines *table, int line, int modified) {
+
+    struct fileLines* tmp = NULL;
+    tmp = searchLines(table, line);
 
     if (tmp != NULL) {
         tmp->lineMod = modified;
