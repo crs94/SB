@@ -71,9 +71,9 @@ int modifyLines(struct fileLines *table, int line, int modified);
 void deleteLines(struct fileLines *table);
 
 /*
- * This function reads one line from the file pointed by fp 
+ * This function reads one line from the file pointed by fp
  * and returns a string with all comments and unnecessary white
- * spaces removed and all letters capitalized 
+ * spaces removed and all letters capitalized
  */
 int GetLine(FILE *fp, char *lineBuffer) {
 
@@ -90,12 +90,12 @@ int GetLine(FILE *fp, char *lineBuffer) {
 			// Breaks if line is empty or only has comments
 			if ((c == ';') || (c == '\n')) break;
 		}
-		
+
 		// Changes tabs to spaces to keep lines uniform
 		if (c == '\t') {
 			c = ' ';
 		}
-		
+
 		// Ignores multiple spaces between tokens
 		if ((lineBuffer[n - 1] == ' ') && (n != 0)) {
 			while ((c == ' ') || (c == '\t')) {
@@ -107,7 +107,7 @@ int GetLine(FILE *fp, char *lineBuffer) {
 				break;
 			}
 		}
-		
+
 		if (islower(c)) {
 			// Converts char to upper case
 			c = toupper(c);
@@ -117,26 +117,23 @@ int GetLine(FILE *fp, char *lineBuffer) {
 		n++;
 		c = fgetc(fp);
 	}
-	
+
 	if (c == ';') {
 		// If a comment is identified, the rest of the line is ignored
 		while ((c = fgetc(fp)) != '\n');
 	}
-	
+
 	// If line wasn't empty
-	if (n > 0) { 
+	if (n > 0) {
 		if(lineBuffer[n-1] == ' ') n--;
 		lineBuffer[n] = '\n';
 		lineBuffer[++n] = '\0';
 	}
-	
+
 	else {
 		lineBuffer[0] = '\0';
 	}
-	
-	/***** Why is this here? ****/
-	//if (c == EOF) printf("%s\n", lineBuffer);
-	
+
 	if (c != EOF) return 1;
 	return 0;
 }
@@ -156,13 +153,13 @@ int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
 		n++;
 		p++;
 	}
-	tokenBuffer[n] = '\0'; 
+	tokenBuffer[n] = '\0';
 
 	if (lineBuffer[p] == '\n') return p;
 	return ++p;
 }
 
-/* 
+/*
  * Alternative version of GetToken
  */
 int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
@@ -187,18 +184,18 @@ int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
 int IsLabel(char *token) {
 
 	int i = 0;
-	
+
 	// If first character is a digit return zero
 	if(isdigit(token[i])) {
 		return 0;
 	}
 
 	while (token[++i] != '\0') {
- 
-		 /* A token is valid if it contais only 
-		  * alphanumeric characters or underscores */	
+
+		 /* A token is valid if it contais only
+		  * alphanumeric characters or underscores */
 		if((!isalnum(token[i])) && (token[i] != '_')) {
-			/* Return 0 if colon is found and it is not 
+			/* Return 0 if colon is found and it is not
 			 * at the last position in token */
 			if((token[i] == ':') && (token[i+1] != '\0')) {
 				return 0;
@@ -235,26 +232,26 @@ int IsValid(char *token) {
  * This function tests if token is a decimal number
  */
 int IsNumber(char *token) {
-	
+
 	int i = 0;
 	int negative = 0;
-	
+
 	if(token[i] == '-') {
 		negative = 1;
 		i++;
 	}
-	
+
 	while( i < strlen(token)) {
 		if (!isdigit(token[i])) {
 			return 0;
 		}
 		i++;
 	}
-	
+
 	if(negative) {
 		return -1;
 	}
-	
+
 	return 1;
 }
 
@@ -264,14 +261,14 @@ int IsNumber(char *token) {
 int IsHex(char *token) {
 
 	int i;
-	
+
 	if((token[0] == '0') && (token[1] == 'X')) {
 		for(i = 2; i<strlen(token); i++) {
 			if((token[i] < 0) || (token[i] > 15)) return 0;
 		}
 		return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -284,7 +281,7 @@ int HexToInt(char *token) {
 	//int i = strlen(token);
 	//int j = 0;
 	int num = 0;
-	
+
 	/*while(i > 0) {
 		sum+=(token[i]*(pow(16, j)));
 		i--;
@@ -292,7 +289,7 @@ int HexToInt(char *token) {
 	}*/
 	sscanf(token, "%x", num);
 	sprintf(token, "%d", num);
-	
+
 	return num;
 }
 
@@ -333,15 +330,18 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
 
     struct fileLines* tmp = table;
 
-    // Searches whole table until correct modified line is found
-    // or until the end is reached
+    /*
+    * Searches whole table until correct modified line is found
+    * or until the end is reached
+    */
     while ((tmp != NULL)) {
-    	//printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
-        if (tmp->lineMod == modified) {
-        	return tmp;
+    	if (tmp->lineMod == modified) {
+        	// If found, returns a pointer to the line in the table
+            return tmp;
         }
         tmp = tmp->next;
     }
+    // Else, returns a NULL pointer
     return NULL;
 }
 
@@ -358,41 +358,67 @@ int insertLines(struct fileLines *table, int original, int modified) {
     struct fileLines* b4 = NULL;
     tmp = searchLines(table, modified);
 
+    /*
+    * The lines found by searchLines is the line prior the
+    * macro calling. Therefore, a new line will be inserted
+    * in between teh previous line and the macro calling.
+    */
     if (tmp != NULL) {
         new->lineNum = original;
         new->lineMod = modified + 1;
         new->next = tmp->next;
         tmp->next = new;
-        
+
         update = modified + 1;
         b4 = new;
 		tmp = new->next;
+
+		/*
+		* The rest of the table needs to be updated so the
+		* lineMod variable will match the new order imposed
+		* by the insertion of the new line.
+		*/
         while (tmp != NULL) {
-        	printf("%d\n", n);
+        	/*
+        	* If it is the first line to be modified,
+        	* it means that it is the macro calling and
+        	* the line will not be on the final output
+        	* file. Therefore, its lineMod value must be 0.
+        	*/
         	if (n == 0) {
         		tmp->lineMod = 0;
         		b4 = tmp;
         		tmp = tmp->next;
         	}
         	else {
-        		tmp->lineMod = update + 1;
-        		update++;
-	        	b4 = tmp;
-	        	tmp = tmp->next;
+                /*
+                * Guarantees that only the lines that were
+                * not equal 0 are being modified.
+                */
+                if (tmp->lineMod) {
+                    update++;
+                    tmp->lineMod = update;
+                    b4 = tmp;
+                    tmp = tmp->next;
+                }
 	        }
 	        n++;
         }
-        printf("\n");
-
+        /*
+        * If insertion runs smoothly, returns the
+        * value of the new line that has just been
+        * inserted into the table
+        */
         return modified + 1;
     }
+    // Else, returns 0
     return 0;
 }
 
 /*
  * Modifies lines in the table
- * 	It is used to modify the values of the lines as the lines of the
- * 	original file are modified throughout the program
+ * 	It is used to modify the values of the lines as the lines
+ * 	of the original file are modified throughout the program
  */
 int modifyLines(struct fileLines *table, int line, int modified) {
 

@@ -3,7 +3,7 @@
 * FILE NAME: Preprocess.c
 *
 *
-* PURPOSE: 	This function performs the preprocessing step in the assembly 
+* PURPOSE: 	This function performs the preprocessing step in the assembly
 * 			procedure. It checks if a line of the input source code contains
 *			an EQU or IF directive, replaces the labels defined in EQU
 *			directives throughout the code, and includes the line following
@@ -26,7 +26,7 @@
 *
 *
 * ABNORMAL TERMINATION CONDITIONS, ERROR AND WARNING MESSAGES:
-* 
+*
 *
 *
 * ASSUMPTIONS, CONSTRAINTS, RESTRICTIONS:
@@ -44,7 +44,7 @@
 #include "utils.h"
 //#include "Preprocess.h"
 
-/* 
+/*
  *This structure holds the symbol/label defined in an EQU directive
  * and the value by which it is to be replaced.
  */
@@ -63,13 +63,12 @@ int main() {
 
 	char line[LINE_LENGTH];
 	char lineOut[LINE_LENGTH];
-	//char aux[LINE_LENGTH]; // Necessary?
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
-	char input_file[] = "TestFiles/SB_test_getline.asm"; 
+	char input_file[] = "TestFiles/SB_test_getline.asm";
 	char output_file[] = "TestFiles/output.txt";
-	int linec = 0;
-	int linem = 0;
+	int linec = 0; // Counts the line
+	int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
 	int secText = 0;
 	int secData = 0;
@@ -85,7 +84,7 @@ int main() {
 	if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
 		return 0;
-	} 
+	}
 
 	if ((fp_out = fopen(output_file, "w")) == NULL) {
         printf("File not found!\n");
@@ -98,13 +97,13 @@ int main() {
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)) {
     	linec++; // Increments line counter
 		addLines(&linesTable_Head, linec, linec); // Adds line in line reference table
-		
+
 		/*
 		 * If line is not only blanks and/or '\n'
 		 * the function tries to identify its parts
 		 */
 	    if (strlen(line) > 0) {
-	    
+
 	    	/*
 	    	 * Despite the rest of the line, if the last thing
 	    	 * is a label, one must concatenate its content
@@ -132,7 +131,7 @@ int main() {
 	    		}
 	    		else printf("Line only has label.\n");
     		}
-    		
+
     		/*
     		* If line has an EQU directive
     		*/
@@ -158,7 +157,7 @@ int main() {
 										}
 										// Line contains a new EQU definition
 										else {
-											/* Checks if the operand of EQU is a label previously 
+											/* Checks if the operand of EQU is a label previously
 											 * defined in another EQU, in which case the new label
 											 * will have the same value as the previous one */
 											tmp = SearchEQU(equTable_Head, token2);
@@ -190,8 +189,8 @@ int main() {
 		    			tratar caso label = "EQU:" ou label é o nome de inst?
 		    		}*/
 		    	}
-		    }	
-		    	    
+		    }
+
 		    else {
 		    	/*
     		 	 *	Else, if line has an IF directive
@@ -203,7 +202,7 @@ int main() {
 		    			if(!strcmp(token1, "IF")) {
 		    				// Checks whether IF directive has an operand
 		    				if(linePos = GetToken(line, token1, linePos)) {
-		    					// Seaches for the operand in EQU table
+		    					// Searches for the operand in EQU table
 		    					tmp = SearchEQU(equTable_Head, token1);
 		    					// Operand was found in the table or is a zero or is a one
 		    					if((tmp != NULL) || (!strcmp(token1, "0")) || (!strcmp(token1, "1"))) {
@@ -241,11 +240,11 @@ int main() {
 		    			}*/
 		    		}
 		    	}
-		    	
+
 		    	/*
-    		 	 *	Insert brief explanation of this section.
+    		 	 *	Else, if line has neither EQU nor IF directives
     		 	 */
-		    	else {		    	
+		    	else {
 					// Gets tokens one by one and searches them in EQU table
 		    		while (linePos = GetToken(line, token1, linePos)) {
 	    				tmp = SearchEQU(equTable_Head, token1);
@@ -263,9 +262,9 @@ int main() {
 		    		linem++;
 		    		modifyLines(linesTable_Head, linec, linem);
 	    		}
-	    		
+
 	    	}
-	    	
+
 	    	i = 0;
 	    	lineOut[0] = '\0';
 	    	linePos = 0;
@@ -279,8 +278,12 @@ int main() {
 	    else modifyLines(linesTable_Head, linec, 0);
     }
 
+    /*
+    * After its use during preprocess passage, the EQU
+    * table will not be used anymore and can be deleted
+    */
     DeleteEQU(equTable_Head);
-    deleteLines(linesTable_Head);
+
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) { // What to do if error occurs?
     	printf("\nFiles closed.");
     }
@@ -289,15 +292,14 @@ int main() {
 }
 
 /*
- * This funcion searches the EQU table for token and returns a pointer
+ * This function searches the EQU table for token and returns a pointer
  * for the node in which token was found or NULL if it was not found
  */
 struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
 
     struct equ_tab* tmp = table;
     while ((tmp != NULL)) {
-    	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
-        if (!strcmp(tmp->label, token)) {
+    	if (!strcmp(tmp->label, token)) {
         	return tmp;
         }
         tmp = tmp->next;
@@ -306,7 +308,7 @@ struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
 }
 
 /*
- * This funcion inserts a node in EQU table with label and value
+ * This function inserts a node in EQU table with label and value
  * defined by name and digit, respectively
  */
 void AddEQU(struct equ_tab **table, char *name, char *digit) {
@@ -325,7 +327,7 @@ void AddEQU(struct equ_tab **table, char *name, char *digit) {
 }
 
 /*
- * This funcion deletes the EQU table, freeing the memory previously
+ * This function deletes the EQU table, freeing the memory previously
  * allocated
  */
 void DeleteEQU(struct equ_tab *table) {
