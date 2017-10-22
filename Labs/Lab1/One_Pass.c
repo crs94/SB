@@ -58,6 +58,7 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	int defined;						// 1 if label definition was found. 0 otherwise
 	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
+	int sec;
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
@@ -69,15 +70,16 @@ struct output_line {					//
 
 // To be removed in final code
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
-void AddSym(struct sym_table_node **table, char *name, int address, int defined);
+void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section);
 void DeleteSymTable(struct sym_table_node *table);
 struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 int IsValidLabel(struct op_table_node table[], char *token);
 void AddReplace(struct replace_list_node **node, int *n);
-void ReplaceList(struct sym_table_node *node);
+void ReplaceLists(struct sym_table_node *node);
 void AddLine(struct output_line *line, struct output_line **head);
 void DeleteOutputLines(struct output_line *first);
 void WriteObjectFile(FILE *fp, struct output_line *first);
+void AdjustAdresses(sym_table_node *table, int lc_text);
 
 
 int main() {
@@ -89,17 +91,20 @@ int main() {
 	char *dirTable[] = {"SPACE", "CONST", "SECTION"};
 	int linePos = 0;
 	int i = 0;
-	int sec_text = 0;
-	int sec_data = 0; 
+	//int sec_text = 0;
+	//int sec_data = 0; 
+	int sec = 0;
 	int offset = 0;
-	int lc = 0;
+	//int lc = 0;
+	int lc[3] = {0, 0, 0}
 	int line_count = 0;
 	int label_count = 0;
 	int opr_count = 0;
 	int dir = -1;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
-	struct output_line *head = NULL;
+	struct output_line *head_text = NULL;
+	struct output_line *head_data = NULL;
 	struct output_line *lineOut = NULL; //linha atual
 	struct sym_table_node *symTable = NULL;
 	struct sym_table_node *tmp_sym = NULL;
@@ -132,18 +137,20 @@ int main() {
     }
     
     while (GetLine(fp_in, line)) {
+    
     	printf("In first while\n");
     	line_count++;
     	label_count = 0;
     	linePos = 0;
     	dir = -1;
-    	replace = NULL;
+    	//replace = NULL;
     	//tmp_op = NULL; //why?
     	lineOut = (struct output_line*)malloc(sizeof(struct output_line)); //free if finds an error?
     	lineOut->opcode = -1;
     	lineOut->op[0] = -1;
     	lineOut->op[1] = -1; //this will be tested before writing to file
     	lineOut->next = NULL;
+    	
     	while(GetToken2(line, token1, &linePos)) {
     		printf("In second while\n");
 			if(token1[strlen(token1) - 1] == ':') {
@@ -152,7 +159,7 @@ int main() {
 					if(label_count == 0) {
 						tmp_sym = SearchSym(symTable, token1);
 						if(tmp_sym == NULL) {
-							AddSym(&symTable, token1, lc, 1); //found label definition
+							AddSym(&symTable, token1, lc[sec], 1, sec); //found label definition
 							printf("Added label %s to symtable\n", token1);
 							tmp_sym = symTable; //used by SPACE later?
 						}
@@ -163,8 +170,8 @@ int main() {
 							else { //Encontrou definição de uma label referenciada anteriormente.
 								printf("Found definition of previous forward reference\n");
 								tmp_sym->defined = 1;
-								tmp_sym->address = lc;
-								replace = tmp_sym; 
+								tmp_sym->address = lc[sec];
+								//replace = tmp_sym; 
 								//Can't replace yet because of vector length. will replace after the line is processed.
 							}
 						}
@@ -193,7 +200,7 @@ int main() {
 								printf("Linha %d. Erro: Instrução fora da seção de texto.\n", line_count);
 							}
 						}
-						lc+=(tmp_op->operands+1);
+						lc[sec]+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						opr_count = 0;
 						// Gets operands and any other tokens in the line
@@ -206,7 +213,7 @@ int main() {
 									printf("Gonna search symbol!\n");
 									tmp_sym = SearchSym(symTable, token1);
 									if(tmp_sym != NULL) { //found operand in symTable
-										if(tmp_sym->defined) {
+										if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
 											lineOut->op[opr_count] = tmp_sym->address;
 										}
 										else {
@@ -217,7 +224,7 @@ int main() {
 									else {
 										// First forward reference
 										printf("Found forward reference to %s in line %d\n", token1, line_count);
-										AddSym(&symTable, token1, -1, 0);
+										AddSym(&symTable, token1, -1, 0, sec);
 										printf("Added forward reference to SymTable\n");
 										lineOut->op[opr_count] = -1;
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
@@ -278,11 +285,11 @@ int main() {
 						if(dir > -1) {
 							printf("Found directive %s in line %d\n", token1, line_count);
 							if(dir != 2) {
-								if(sec_text) {
-										printf("Linha %d. Erro: Diretiva dentro da seção de texto.\n", line_count);
+								if(sec == 1) {
+									printf("Linha %d. Erro: Diretiva dentro da seção de texto.\n", line_count);
 								}
 								else {
-									if(!sec_data) {
+									if(!sec) {
 										printf("Linha %d. Erro: Diretiva fora da seção de dados.\n", line_count);
 									}
 								}
@@ -296,7 +303,7 @@ int main() {
 										if(i == 0) {
 											if(IsNumber(token1)) { //checks if token is a number
 												offset = atoi(token1);
-												lc += offset;
+												lc[sec] += offset;
 												tmp_sym->vector = offset;
 												lineOut->opcode = 15;
 												lineOut->op[0] = offset;
@@ -312,7 +319,7 @@ int main() {
 									}
 									else {
 										if(i == 0) {
-											lc += 1;
+											lc[sec] += 1;
 											lineOut->opcode = 15;
 											lineOut->op[0] = 1;
 										}
@@ -332,14 +339,14 @@ int main() {
 											if(i == 0) {
 												if(IsHex(token1)) {
 													offset = HexToInt(token1);
-													lc += offset;
+													lc[sec]++;
 													lineOut->opcode = 0;
 													lineOut->op[0] = offset;
 												}
 												else {
 													if(IsNumber(token1)) { //checks if token is a number
 														offset = atoi(token1);
-														lc += offset;
+														lc[sec]++;
 														lineOut->opcode = 0;
 														lineOut->op[0] = offset;
 													}
@@ -432,27 +439,45 @@ int main() {
     	
     	if(lineOut->opcode != -1) {
     		printf("Adding line to output\n");
-			AddLine(lineOut, &head);
+    		if(dir > -1) {
+    			printf("Adding to head_data\n");
+				AddLine(lineOut, &head_data);
+			}
+			else {
+				printf("Adding to head_text\n");
+				AddLine(lineOut, &head_text);
+			}
 		}
 		else {
 			free(lineOut);
 		}
     	
-    	if(replace != NULL) {
+    	/*if(replace != NULL) {
     		printf("Replacing list\n");
     		ReplaceList(replace);
-    	}
+    	}*/
     	printf("To next line o/\n");
     }
     //checar se há labels indefinidas na symTable antes?
+    AdjustAdresses(symTable, lc[1]);
+    ReplaceLists(symTable);
     printf("Writing to object file\n");
-    WriteObjectFile(fp_out, head);
+    WriteObjectFile(fp_out, head_text, head_data);
     printf("Deleting output lines\n");
     DeleteOutputLines(head);
     printf("Deleting symbol table\n");
     DeleteSymTable(symTable);
 }
 
+void AdjustAdresses(sym_table_node *table, int lc_text) {
+	struct sym_table_node *tmp = table;
+	while(tmp != NULL) {
+		if(tmp->sec == 2) {
+			tmp->adress += lc_text;
+		}
+		tmp = tmp->next;
+	}
+}
 
 //Found an undefined operand and need to include it in replace_list. Includes at the front of list
 void AddReplace(struct replace_list_node **node, int *n) {
@@ -464,22 +489,26 @@ void AddReplace(struct replace_list_node **node, int *n) {
 }
 
 /*
- * Replaces replace list of a node in SymTable and deletes the replace list
+ * Replaces replace list of each node in SymTable and deletes the replace list
  */
-void ReplaceList(struct sym_table_node *node) {
+void ReplaceLists(struct sym_table_node *node) {
 	struct replace_list_node *tmp = node->list;
-	while (tmp != NULL) {
-		printf("Replacing reference\n");
-		*(tmp->replace) = (node->address + tmp->offset);
-        tmp = tmp->next; //does it need to go after replacing? 
+	struct sym_table_node *temp = table;
+	while(temp != NULL) {
+		while (tmp != NULL) {
+			printf("Replacing reference\n");
+			*(tmp->replace) = (node->address + tmp->offset);
+		    tmp = tmp->next; //does it need to go after replacing? 
+		}
+		tmp = node->list;
+		printf("Deleting list of replaces in node %s\n", node->label);
+		while(node->list != NULL) {
+			tmp = node->list;
+			node->list = node->list->next;
+			free(tmp);
+		}
+		temp = temp->next;
 	}
-	tmp = node->list;
-	printf("Deleting list of replaces in node %s\n", node->label);
-    while(node->list != NULL) {
-    	tmp = node->list;
-    	node->list = node->list->next;
-    	free(tmp);
-    }
 }
 
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
@@ -496,7 +525,7 @@ struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
     return NULL; // Label not defined(?)
 }
 
-void AddSym(struct sym_table_node **table, char *name, int address, int defined) {
+void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section) {
 			
 	int i = 0;
 	struct sym_table_node* new = (struct sym_table_node*)malloc(sizeof(struct sym_table_node));
@@ -596,25 +625,36 @@ void DeleteOutputLines(struct output_line *first) {
     }
 }
 
-void WriteObjectFile(FILE *fp, struct output_line *first) {
+void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_line *first_data) {
+
 	int n;
-	struct output_line *tmp = first;
+	struct output_line *tmp = first_text;
+	
 	while(tmp != NULL) {
     	if(tmp->opcode > -1) {
-    		if(tmp->opcode == 0) { //CONST
+    		
+    			else {
+    				fprintf(fp, "%d %d ", tmp->opcode, tmp->op[0]);
+    				if(tmp->op[1] > -1) {
+    					fprintf(fp, "%d ", tmp->op[1]);
+    				}
+    				fprintf(fp, "\n");
+    			}
+    		}
+    	}
+    	tmp = tmp->next;
+    }
+    
+    tmp = first_data;
+    
+    while(tmp != NULL) {
+    	if(tmp->opcode == 0) { //CONST
     			fprintf(fp, "%d\n", tmp->op[0]);
     		}
     		else {
     			if(tmp->opcode == 15) { //SPACE
     				for(n = 0; n < tmp->op[0]; n++) {
     					fprintf(fp, "0 ");
-    				}
-    				fprintf(fp, "\n");
-    			}
-    			else {
-    				fprintf(fp, "%d %d ", tmp->opcode, tmp->op[0]);
-    				if(tmp->op[1] > -1) {
-    					fprintf(fp, "%d ", tmp->op[1]);
     				}
     				fprintf(fp, "\n");
     			}
