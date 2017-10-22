@@ -37,8 +37,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include "Util.h"
+#include "utils.h"
+//#include "One_Pass.h"
 
 struct op_table_node {					// Struct to store a node of the operations table
 	char *name;							// Name of the operation
@@ -67,6 +67,7 @@ struct output_line {					//
 	struct output_line *next;			//
 };
 
+// To be removed in final code
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
 void AddSym(struct sym_table_node **table, char *name, int address, int defined);
 void DeleteSymTable(struct sym_table_node *table);

@@ -41,10 +41,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Util.h"
-
-#define LINE_LENGTH 560
-#define TOKEN_LENGTH 101
+#include "utils.h"
+//#include "Preprocess.h"
 
 /* 
  *This structure holds the symbol/label defined in an EQU directive
@@ -57,9 +55,9 @@ struct equ_tab {
 };
 
 // This will be gone in final code. No need to comment
-static struct equ_tab *SearchEQU(struct equ_tab *table, char *token);
-static void AddEQU(struct equ_tab **table, char *label, char *digit);
-static void DeleteEQU(struct equ_tab *table);
+struct equ_tab *SearchEQU(struct equ_tab *table, char *token);
+void AddEQU(struct equ_tab **table, char *label, char *digit);
+void DeleteEQU(struct equ_tab *table);
 
 int main() {
 
@@ -294,7 +292,7 @@ int main() {
  * This funcion searches the EQU table for token and returns a pointer
  * for the node in which token was found or NULL if it was not found
  */
-static struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
+struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
 
     struct equ_tab* tmp = table;
     while ((tmp != NULL)) {
@@ -311,7 +309,7 @@ static struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
  * This funcion inserts a node in EQU table with label and value
  * defined by name and digit, respectively
  */
-static void AddEQU(struct equ_tab **table, char *name, char *digit) {
+void AddEQU(struct equ_tab **table, char *name, char *digit) {
 
 	int i = 0;
 	struct equ_tab* new = (struct equ_tab*)malloc(sizeof(struct equ_tab));
@@ -330,7 +328,7 @@ static void AddEQU(struct equ_tab **table, char *name, char *digit) {
  * This funcion deletes the EQU table, freeing the memory previously
  * allocated
  */
-static void DeleteEQU(struct equ_tab *table) {
+void DeleteEQU(struct equ_tab *table) {
 
     struct equ_tab* tmp;
     while(table != NULL) {

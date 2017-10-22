@@ -2,17 +2,21 @@
 #ifndef UTIL_H_   /* Include guard */
 #define UTIL_H_
 
+#define LINE_LENGTH 560
+#define TOKEN_LENGTH 101
+
 extern struct fileLines {
     int lineNum;
     int lineMod;
     struct fileLines *next;
 };
 
-FILE *OpenFile(char *filename);
 
 int GetLine(FILE *fp, char *lineBuffer);
 
 int GetToken(char *lineBuffer, char *tokenBuffer, int p);
+
+int GetToken2(char *lineBuffer, char *tokenBuffer, int *p);
 
 int IsLabel(char *token);
 
@@ -28,7 +32,7 @@ void addLines(struct fileLines **table, int original, int modified);
 
 struct fileLines *searchLines(struct fileLines *table, int modified);
 
-int insertLines(struct fileLines *table, int modified, int macroDef);
+int insertLines(struct fileLines *table, int original, int modified);
 
 int modifyLines(struct fileLines *table, int line, int modified);
 

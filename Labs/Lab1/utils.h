@@ -1,6 +1,6 @@
 /***********************************************************************
 *
-* FILE NAME: Util.c
+* FILE NAME: utils.c
 *
 *
 * PURPOSE:
@@ -32,22 +32,43 @@
 *
 *
 ***********************************************************************/
-
-/*
- * Write the comment text here, in complete sentences.
- * Use block comments when there is more than one sentence.
- */
-
-
-#define LINE_LENGTH 560
-#define TOKEN_LENGTH 101
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+//#include "utils.h"
 
 struct fileLines {
     int lineNum;
     int lineMod;
     struct fileLines *next;
 };
+
+// To be removed in final code
+int GetLine(FILE *fp, char *lineBuffer);
+
+int GetToken(char *lineBuffer, char *tokenBuffer, int p);
+
+int GetToken2(char *lineBuffer, char *tokenBuffer, int *p);
+
+int IsLabel(char *token);
+
+int IsValid(char *token);
+
+int IsNumber(char *token);
+
+int IsHex(char *token);
+
+int HexToInt(char *token);
+
+void addLines(struct fileLines **table, int original, int modified);
+
+struct fileLines *searchLines(struct fileLines *table, int modified);
+
+int insertLines(struct fileLines *table, int original, int modified);
+
+int modifyLines(struct fileLines *table, int line, int modified);
+
+void deleteLines(struct fileLines *table);
 
 /*
  * This function reads one line from the file pointed by fp 
