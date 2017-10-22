@@ -102,10 +102,16 @@ int main() {
     	linec++; // Increments line counter
 		addLines(&linesTable_Head, linec, linec); // Adds line in line reference table
 
+<<<<<<< HEAD
+    while(GetLine(fp_in, line)) {
+    	// Increments line counter
+    	linec++;	
+=======
 		/*
 		* If line is not only blanks and/or '\n'
 		* the function tries to identify its parts
 		*/
+>>>>>>> b545fcaf987673650293effe3717699063fddf37
 	    if (strlen(line) > 0) {
 	    	/*
 	    	* Despite the rest of the line, if the last thing
