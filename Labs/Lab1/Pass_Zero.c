@@ -60,7 +60,7 @@ struct MDT {
 //To be removed in final code?
 struct MDT *searchMNT(struct MNT *table, char *token);
 struct MDT *addMDT(struct MDT **table, char *toAdd, int line);
-void addMNT(struct MNT **table, char *toAdd, struct MDT *first);
+void addMNT(struct MNT **table, char *toAdd);
 void deleteMDT(struct MDT *table);
 void deleteMNT(struct MNT *table);
 
@@ -70,7 +70,7 @@ int main() {
 	char lineOut[LINE_LENGTH];
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
-	char input_file[] = "TestFiles/fatorial.asm"; // To be replaced by output from preprocess
+	char input_file[] = "TestFiles/fatorial.asm";
 	char output_file[] = "TestFiles/output_macro.txt";
 	int linec = 0; // Counts the line
     int linem = 0; // Counts the lines that will be on the output file
@@ -92,7 +92,7 @@ int main() {
     if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
 		return 0;
-	} 
+	}
 
 	if ((fp_out = fopen(output_file, "w")) == NULL) {
         printf("File not found!\n");
@@ -101,7 +101,7 @@ int main() {
 
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)){
         linec++; // Increments line counter
-        
+
         printf("%s", line);
         linePos = 0;
 
@@ -113,43 +113,36 @@ int main() {
             if (linePos = GetToken(line, token1, linePos)) {
                 if (IsLabel(token1)) {
                     firstMacro = 1;
-                    printf("MACRO: %s\n", token1);
-                    addMNT(&mntTable_Head, token1, NULL);
+                    addMNT(&mntTable_Head, token1);
                 }
             }
             modifyLines(linesTable_Head, linec, 0);
         }
         else if (strstr(line, "END ") || strstr(line, "END\n")) {
             // TODO Think of a new way of comparing this
-            printf("finished MACRO!\n");
             tmpMDT = addMDT(&mdtTable_Head, line, linec);
             inMacro = 0;
             modifyLines(linesTable_Head, linec, 0);
         }
         else {
             if ((inMacro) && (firstMacro)) {
-                printf("first MACRO\n");
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
-                printf("in MACRO\n");
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 modifyLines(linesTable_Head, linec, 0);
             }
             else {
-                printf("not MACRO\n");
                 if (linePos = GetToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
-                        printf("Found in table!\n");
                         while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
                             fprintf(fp_out, "%s\n", tmpMDT->line);
                             linem++;
                             insertLines(linesTable_Head, tmpMDT->lineNum, linem);
                             tmpMDT = tmpMDT->next;
                         }
-                        printf("End of MACRO\n");
                     }
                     else fprintf(fp_out, "%s", line);
                     linem++;
@@ -157,19 +150,15 @@ int main() {
                 }
             }
         }
-        printf("EOL\n\n");
     }
 
-    linesTmp = linesTable_Head;
-    printf("This is the line table:\n");
-    while (linesTmp != NULL) {
-        printf("%d\t%d\n", linesTmp->lineNum, linesTmp->lineMod);
-        linesTmp = linesTmp->next;
-    }
-
+    /*
+    * After its use during passage zero, MNT and MDT will
+    * not be used anymore and can be deleted
+    */
     deleteMDT(mdtTable_Head);
     deleteMNT(mntTable_Head);
-    deleteLines(linesTable_Head);
+
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
     	printf("\nFiles closed.");
     }
@@ -177,29 +166,46 @@ int main() {
     return 0;
 }
 
+/*
+* Searches for labels in the MNT
+*   It is used to find a label given by the variable token
+*/
 struct MDT *searchMNT(struct MNT *table, char *token) {
 
     struct MNT* tmp = table;
 
-    // Searches whole table intil correct label is found
-    // or until the end is reached
+    /*
+    * Searches whole table until correct label is found
+    * or until the end is reached
+    */
     while ((tmp != NULL)) {
-    	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
-        if (!strcmp(tmp->label, token)) {
-        	return tmp->begin;
+    	if (!strcmp(tmp->label, token)) {
+        	/*
+            * If the label was found in the MNT table,
+            * returns the pointer for the beginning of
+            * the macro definition on the MDT
+            */
+            return tmp->begin;
         }
         tmp = tmp->next;
     }
+    // Else, returns a NULL pointer
     return NULL;
 }
 
+/*
+* Add the new line to the MDT
+*   It is used to add a new line to the MDT, storing the
+*   line itself and the number of the line in which it
+*   appeared on the original file
+*/
 struct MDT *addMDT(struct MDT **table, char *toAdd, int line) {
 
 	int i = 0;
 	struct MDT* tmp = *table;
     struct MDT* before = NULL;
 	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-	
+
     // Removes LF from lines before inserting into table
     for (i = 0; i < strlen(toAdd); i++) {
         if (toAdd[i] == '\n') {
@@ -223,9 +229,21 @@ struct MDT *addMDT(struct MDT **table, char *toAdd, int line) {
 	}
     before->next = new;
     return tmp;
+    /*
+    * Whether the line inserted is the first one or just
+    * some random line of the table, the function must return
+    * a pointer to the line. Then, if the line is the first one
+    * in the macro definition, a reference can be added in the MNT.
+    */
 }
 
-void addMNT(struct MNT **table, char *toAdd, struct MDT *first) {
+/*
+* Add the new label to the MNT
+*   It is used to add a new label to the MDT, storing
+*   also a pointer that refers to the first line of the macro
+*   definition in the MDT.
+*/
+void addMNT(struct MNT **table, char *toAdd) {
 
 	int i = 0;
 	struct MNT* new = (struct MNT*)malloc(sizeof(struct MNT));
@@ -235,11 +253,16 @@ void addMNT(struct MNT **table, char *toAdd, struct MDT *first) {
 		}
 		else new->label[i] = toAdd[i];
 	}
-	new->begin = first;
+	/*
+	* Since the macro definition is yet to be reached,
+	* the pointer "begin" is set to NULL by default.
+	*/
+	new->begin = NULL;
 	new->next = *table;
 	*table = new;
 }
 
+// Deletes the MDT
 void deleteMDT(struct MDT *table) {
 
     struct MDT* tmp;
@@ -250,6 +273,7 @@ void deleteMDT(struct MDT *table) {
     }
 }
 
+// Deletes the MNT
 void deleteMNT(struct MNT *table) {
 
     struct MNT* tmp;
