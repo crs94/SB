@@ -192,7 +192,7 @@ int IsLabel(char *token) {
 
 	while (token[++i] != '\0') {
 
-		 /* A token is valid if it contais only
+		 /* A token is valid if it contains only
 		  * alphanumeric characters or underscores */
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			/* Return 0 if colon is found and it is not
