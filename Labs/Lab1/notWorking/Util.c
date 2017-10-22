@@ -43,9 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LINE_LENGTH 560
-#define TOKEN_LENGTH 101
-
 struct fileLines {
     int lineNum;
     int lineMod;

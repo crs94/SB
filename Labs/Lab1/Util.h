@@ -239,7 +239,7 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
     // Searches whole table until correct modified line is found
     // or until the end is reached
     while ((tmp != NULL)) {
-    	printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
+    	//printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
         if (tmp->lineMod == modified) {
         	return tmp;
         }
@@ -255,17 +255,39 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
  */
 int insertLines(struct fileLines *table, int original, int modified) {
 
+	int n = 0, update = 0;
     struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
     struct fileLines* tmp = NULL;
+    struct fileLines* b4 = NULL;
     tmp = searchLines(table, modified);
 
     if (tmp != NULL) {
-        new->lineNum = 0;
-        new->lineMod = modified;
+        new->lineNum = original;
+        new->lineMod = modified + 1;
         new->next = tmp->next;
         tmp->next = new;
+        
+        update = modified + 1;
+        b4 = new;
+		tmp = new->next;
+        while (tmp != NULL) {
+        	printf("%d\n", n);
+        	if (n == 0) {
+        		tmp->lineMod = 0;
+        		b4 = tmp;
+        		tmp = tmp->next;
+        	}
+        	else {
+        		tmp->lineMod = update + 1;
+        		update++;
+	        	b4 = tmp;
+	        	tmp = tmp->next;
+	        }
+	        n++;
+        }
+        printf("\n");
 
-        return modified;
+        return modified + 1;
     }
     return 0;
 }

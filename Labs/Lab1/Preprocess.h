@@ -37,14 +37,14 @@
 *
 ***********************************************************************/
 
-#pragma warning(disable: 4996)
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "Util.h"
+//#pragma warning(disable: 4996)
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
+//#include "Util.h"
 
-#define LINE_LENGTH 560
-#define TOKEN_LENGTH 101
+//#define LINE_LENGTH 560
+//#define TOKEN_LENGTH 101
 
 /* 
  *This structure holds the symbol/label defined in an EQU directive
@@ -61,7 +61,7 @@ static struct equ_tab *SearchEQU(struct equ_tab *table, char *token);
 static void AddEQU(struct equ_tab **table, char *label, char *digit);
 static void DeleteEQU(struct equ_tab *table);
 
-int main() {
+struct fileLines *thePre(char *input_file, struct fileLines **lines_Head) {
 
 	char line[LINE_LENGTH];
 	char lineOut[LINE_LENGTH];
@@ -69,8 +69,8 @@ int main() {
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
 	//char input_file[] = "TestFiles/fatorial.asm";
-	char input_file[] = "TestFiles/SB_test_getline.asm"; // To be replaced by argv[2]
-	char output_file[] = "TestFiles/output.txt";
+	//char input_file[] = "TestFiles/SB_test_getline.asm"; // To be replaced by argv[2]
+	char output_file[] = "TestFiles/outpre.txt";
 	int linec = 0;
 	int linem = 0;
 	int linePos = 0;
@@ -82,13 +82,13 @@ int main() {
 	FILE *fp_out = NULL;
 	struct equ_tab *equTable_Head = NULL;
 	struct equ_tab *tmp = NULL;
-	struct fileLines *linesTable_Head = NULL;
+	struct fileLines *linesTable_Head = *lines_Head;
 	struct fileLines *linesTmp = NULL;
 
 	if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
 		return 0;
-	} 
+	}
 
 	if ((fp_out = fopen(output_file, "w")) == NULL) {
         printf("File not found!\n");
@@ -97,7 +97,7 @@ int main() {
 
     line[0] = '\0';
     lineOut[0] = '\0';
-
+    printf("HELLO!\n");
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)) {
     	linec++; // Increments line counter
 		addLines(&linesTable_Head, linec, linec); // Adds line in line reference table
@@ -116,7 +116,7 @@ int main() {
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			modifyLines(linesTable_Head, linec, 0);
-    			printf("%s", line);
+    			//printf("%s", line);
     			do {
     				// Repeat while line == (blanks and/or '\n')
     				if (!GetLine(fp_in, lineOut)) {
@@ -128,9 +128,9 @@ int main() {
     			} while (strlen(lineOut) == 0);
     			if (!endFile) {
 	    			strcat(line, " ");
-	    			printf("%s", line);
+	    			//printf("%s", line);
 	    			strcat(line, lineOut);
-	    			printf("%s", line);
+	    			//printf("%s", line);
 	    		}
 	    		else printf("Line only has label.\n");
     		}
@@ -280,13 +280,19 @@ int main() {
 	    else modifyLines(linesTable_Head, linec, 0);
     }
 
+	linesTmp = linesTable_Head;
+    printf("This is the line table:\n");
+    while (linesTmp != NULL) {
+        printf("%d\t%d\n", linesTmp->lineNum, linesTmp->lineMod);
+        linesTmp = linesTmp->next;
+    }
+
     DeleteEQU(equTable_Head);
-    deleteLines(linesTable_Head);
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) { // What to do if error occurs?
     	printf("\nFiles closed.");
     }
 
-    return 0;
+    return linesTable_Head;
 }
 
 /*
@@ -297,7 +303,7 @@ static struct equ_tab *SearchEQU(struct equ_tab *table, char *token) {
 
     struct equ_tab* tmp = table;
     while ((tmp != NULL)) {
-    	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
+    	//printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
         	return tmp;
         }

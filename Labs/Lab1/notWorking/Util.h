@@ -5,7 +5,6 @@
 extern struct fileLines {
     int lineNum;
     int lineMod;
-    int macroOnly;
     struct fileLines *next;
 };
 

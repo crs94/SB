@@ -35,11 +35,11 @@
 *
 ***********************************************************************/
 
-#pragma warning(disable: 4996)
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "Util.h"
+//#pragma warning(disable: 4996)
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
+//#include "Util.h"
 
 //#define LINE_LENGTH 560
 //#define TOKEN_LENGTH 101
@@ -62,19 +62,20 @@ void addMNT(struct MNT **table, char *toAdd, struct MDT *first);
 void deleteMDT(struct MDT *table);
 void deleteMNT(struct MNT *table);
 
-int main() {
+int theZero(char *input_file, struct fileLines **lines_Head) {
 
     char line[LINE_LENGTH];
 	char lineOut[LINE_LENGTH];
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
-	char input_file[] = "TestFiles/fatorial.asm"; // To be replaced by output from preprocess
-	char output_file[] = "TestFiles/output_macro.txt";
+	//[] = "TestFiles/fatorial.asm"; // To be replaced by output from preprocess
+	char output_file[] = "TestFiles/outzero.txt";
 	int linec = 0; // Counts the line
     int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
 	int secText = 0;
 	int secData = 0;
+    int tmpLine = 0;
 	int i = 0;
 	int inMacro = 0;
 	int firstMacro = 0;
@@ -84,18 +85,19 @@ int main() {
     struct MDT *tmpMDT = NULL;
     struct MNT *mntTable_Head = NULL;
 	struct MNT *tmpMNT = NULL;
-    struct fileLines *linesTable_Head = NULL;
+    struct fileLines *linesTable_Head = *lines_Head;
     struct fileLines *linesTmp = NULL;
 
     if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
 		return 0;
-	} 
+	}
 
 	if ((fp_out = fopen(output_file, "w")) == NULL) {
         printf("File not found!\n");
         return 0;
     }
+    printf("HELLO AGAIN!\n");
 
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)){
         linec++; // Increments line counter
@@ -111,7 +113,7 @@ int main() {
             if (linePos = GetToken(line, token1, linePos)) {
                 if (IsLabel(token1)) {
                     firstMacro = 1;
-                    printf("MACRO: %s\n", token1);
+                    //printf("MACRO: %s\n", token1);
                     addMNT(&mntTable_Head, token1, NULL);
                 }
             }
@@ -119,43 +121,56 @@ int main() {
         }
         else if (strstr(line, "END ") || strstr(line, "END\n")) {
             // TODO Think of a new way of comparing this
-            printf("finished MACRO!\n");
+            //printf("finished MACRO!\n");
             tmpMDT = addMDT(&mdtTable_Head, line, linec);
             inMacro = 0;
             modifyLines(linesTable_Head, linec, 0);
         }
         else {
             if ((inMacro) && (firstMacro)) {
-                printf("first MACRO\n");
+                //printf("first MACRO\n");
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
-                printf("in MACRO\n");
+                modifyLines(linesTable_Head, linec, 0);
+            }
+            else if ((inMacro) && (!firstMacro)) {
+                //printf("in MACRO\n");
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 modifyLines(linesTable_Head, linec, 0);
             }
             else {
-                printf("not MACRO\n");
+                //printf("not MACRO\n");
                 if (linePos = GetToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
                     if (tmpMDT != NULL) {
-                        printf("Found in table!\n");
+                        //printf("Found in table!\n");
                         while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
                             fprintf(fp_out, "%s\n", tmpMDT->line);
-                            linem++;
-                            insertLines(linesTable_Head, tmpMDT->lineNum, linem);
+                            linem = insertLines(linesTable_Head, tmpMDT->lineNum, linem);
+                            linec = linem;
                             tmpMDT = tmpMDT->next;
                         }
-                        printf("End of MACRO\n");
+                        //printf("End of MACRO\n");
+                        //modifyLines(linesTable_Head, ++linem, 0);
                     }
-                    else fprintf(fp_out, "%s", line);
-                    linem++;
-                    modifyLines(linesTable_Head, linec, linem);
+                    else {
+                        printf("%d\n", linem);
+                        fprintf(fp_out, "%s", line);
+                        linem++;
+                        modifyLines(linesTable_Head, linec, linem);
+                        /*linesTmp = linesTable_Head; // to rmv
+                        printf("This is the line table:\n");
+                        while (linesTmp != NULL) {
+                            printf("%d\t%d\n", linesTmp->lineNum, linesTmp->lineMod);
+                            linesTmp = linesTmp->next;
+                        }   */                     
+                    }
                 }
             }
         }
-        printf("EOL\n\n");
+        //printf("EOL\n\n");
     }
 
     linesTmp = linesTable_Head;
@@ -167,7 +182,6 @@ int main() {
 
     deleteMDT(mdtTable_Head);
     deleteMNT(mntTable_Head);
-    deleteLines(linesTable_Head);
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
     	printf("\nFiles closed.");
     }
@@ -182,7 +196,7 @@ struct MDT *searchMNT(struct MNT *table, char *token) {
     // Searches whole table intil correct label is found
     // or until the end is reached
     while ((tmp != NULL)) {
-    	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
+    	//printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
         	return tmp->begin;
         }
