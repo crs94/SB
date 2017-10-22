@@ -2,19 +2,19 @@
 //#define _ONE_PASS_H_
 
 
-extern struct op_table_node {					// Struct to store a node of the operations table
+extern struct op_table_node {			// Struct to store a node of the operations table
 	char *name;							// Name of the operation
 	int opcode;							// Opcode
 	int operands;						// Number of operands
 };
 
-extern struct replace_list_node {				//
+extern struct replace_list_node {		//
 	int *replace;						//
 	int offset;							//
 	struct replace_list_node *next;		//
 };
 
-extern struct sym_table_node {					// Struct to store a node of the symbol table
+extern struct sym_table_node {			// Struct to store a node of the symbol table
 	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
 	int defined;						// 1 if label definition was found. 0 otherwise
@@ -23,7 +23,7 @@ extern struct sym_table_node {					// Struct to store a node of the symbol table
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
-extern struct output_line {					//
+extern struct output_line {				//
 	int opcode;							//
 	int op[2];							//
 	struct output_line *next;			//
