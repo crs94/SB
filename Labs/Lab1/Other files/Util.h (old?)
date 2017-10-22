@@ -1,4 +1,4 @@
-/***********************************************************************
+ /***********************************************************************
 *
 * FILE NAME: Util.c
 *
@@ -385,6 +385,97 @@ int modifyLines(struct fileLines *table, int line, int modified) {
     return -1;
 }
 
+
+
+/*
+ * Add lines at the end of the table
+ * It is essentially used during Preprocess to create the table
+ */
+void addLines(struct fileLines *table, int original, int modified) {
+
+	struct MDT* tmp = *table;
+    struct MDT* before = NULL;
+	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
+
+    new->lineNum = original;
+    new->lineMod = modified;
+    new->macroOnly = 0;
+    new->next = NULL;
+
+    // If the table is empty, insert first node
+	if (*table == NULL) {
+        *table = new;
+        return;
+    }
+
+    // Else, search for empty space
+    while (tmp != NULL) {
+        before = tmp;
+        tmp = tmp->next;
+	}
+    before->next = new;
+}
+
+/*
+ * Inserts lines in the middle of the table
+ * It is used essentially during Pass_Zero to add the references of
+ * the lines of a macro definition in the middle of the code
+ */
+int insertLines(struct fileLines *table, int modified, int macroDef) {
+
+    struct fileLines* tmp = searchLines(table, modified-1);
+    struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
+
+    if (tmp != NULL) {
+        new->lineNum = 0;
+        new->lineMod = modified;
+        new->macroOnly = macroDef;
+        new->next = tmp->next;
+        tmp->next = new;
+
+        return modified;
+    }
+    return 0;
+}
+
+/*
+ * Searches for lines in the table
+ * It is used to find a given line addressed by the variable modified
+ */
+struct fileLines *searchLines(struct fileLines *table, int modified) {
+
+    struct fileLines* tmp = table;
+
+    // Searches whole table until correct modified line is found
+    // or until the end is reached
+    while ((tmp != NULL)) {
+    	printf("Searching for %d. I'm here: %d\n",modified,tmp->lineMod);
+        if (!strcmp(tmp->lineMod, modified)) {
+        	return tmp;
+        }
+        tmp = tmp->next;
+    }
+    return NULL;
+}
+
+/*
+ * Modifies lines in the table.
+ * It is used to modify the values of the lines as the lines of the
+ * original file are modified throughout the program
+ */
+int modifyLines(struct fileLines *table, int modified) {
+
+    struct fileLines* tmp = searchLines(table, modified);
+
+    if (tmp != NULL) {
+        tmp->lineMod = modified;
+        return modified;
+    }
+    return -1;
+}
+
+=======
+>>>>>>> b545fcaf987673650293effe3717699063fddf37
 // Deletes the table
 void deleteLines(struct fileLines *table) {
 

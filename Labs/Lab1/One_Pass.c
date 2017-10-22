@@ -38,7 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "Util2.h"
+#include "Util.h"
 
 struct op_table_node {					// Struct to store a node of the operations table
 	char *name;							// Name of the operation
@@ -104,7 +104,7 @@ int main() {
 	struct sym_table_node *tmp_sym = NULL;
 	struct sym_table_node *replace = NULL;
 	struct op_table_node *tmp_op = NULL;
-	struct op_table_node opTable[] = {"ADD", 1, 1,
+	struct op_table_node opTable[] = {	"ADD", 1, 1,
 										"SUB", 2, 1,
 										"MULT", 3, 1,
 										"DIV", 4, 1,
@@ -333,14 +333,14 @@ int main() {
 													offset = HexToInt(token1);
 													lc += offset;
 													lineOut->opcode = 0;
-													lineOut->op[1] = offset;
+													lineOut->op[0] = offset;
 												}
 												else {
 													if(IsNumber(token1)) { //checks if token is a number
 														offset = atoi(token1);
 														lc += offset;
 														lineOut->opcode = 0;
-														lineOut->op[1] = offset;
+														lineOut->op[0] = offset;
 													}
 													else {
 														printf("Linha %d. Erro: esperava-se um número após CONST.", line_count);

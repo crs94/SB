@@ -68,8 +68,7 @@ int main() {
 	//char aux[LINE_LENGTH]; // Necessary?
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
-	//char input_file[] = "TestFiles/fatorial.asm";
-	char input_file[] = "TestFiles/SB_test_getline.asm"; // To be replaced by argv[2]
+	char input_file[] = "TestFiles/SB_test_getline.asm"; 
 	char output_file[] = "TestFiles/output.txt";
 	int linec = 0;
 	int linem = 0;
@@ -101,24 +100,19 @@ int main() {
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)) {
     	linec++; // Increments line counter
 		addLines(&linesTable_Head, linec, linec); // Adds line in line reference table
-
-<<<<<<< HEAD
-    while(GetLine(fp_in, line)) {
-    	// Increments line counter
-    	linec++;	
-=======
+		
 		/*
-		* If line is not only blanks and/or '\n'
-		* the function tries to identify its parts
-		*/
->>>>>>> b545fcaf987673650293effe3717699063fddf37
+		 * If line is not only blanks and/or '\n'
+		 * the function tries to identify its parts
+		 */
 	    if (strlen(line) > 0) {
+	    
 	    	/*
-	    	* Despite the rest of the line, if the last thing
-	    	* is a label, one must concatenate its content
-	    	* with the content found on the next valid line.
-	    	* Deal with errors on passage one
-	    	*/
+	    	 * Despite the rest of the line, if the last thing
+	    	 * is a label, one must concatenate its content
+	    	 * with the content found on the next valid line.
+	    	 * Deal with errors on passage one
+	    	 */
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			modifyLines(linesTable_Head, linec, 0);
@@ -142,7 +136,7 @@ int main() {
     		}
     		
     		/*
-    		* If line has EQU directive
+    		* If line has an EQU directive
     		*/
 	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) {
 	    		modifyLines(linesTable_Head, linec, 0);
@@ -202,7 +196,7 @@ int main() {
 		    	    
 		    else {
 		    	/*
-    		 	 *	Else, if line has IF directive
+    		 	 *	Else, if line has an IF directive
     		  	 */
 		    	if(strstr(line, "IF ") || strstr(line, " IF ") || strstr(line, " IF\n")) {
 		    		modifyLines(linesTable_Head, linec, 0);
@@ -249,6 +243,7 @@ int main() {
 		    			}*/
 		    		}
 		    	}
+		    	
 		    	/*
     		 	 *	Insert brief explanation of this section.
     		 	 */
