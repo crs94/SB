@@ -65,6 +65,7 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 struct output_line {					//
 	int opcode;							//
 	int op[2];							//
+	int line;							//
 	struct output_line *next;			//
 };
 
@@ -80,6 +81,7 @@ void AddLine(struct output_line *line, struct output_line **head);
 void DeleteOutputLines(struct output_line *first);
 void WriteObjectFile(FILE *fp, struct output_line *first);
 void AdjustAdresses(sym_table_node *table, int lc_text);
+//void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data);
 
 
 int main() {
@@ -149,6 +151,7 @@ int main() {
     	lineOut->opcode = -1;
     	lineOut->op[0] = -1;
     	lineOut->op[1] = -1; //this will be tested before writing to file
+    	lineOut->line = line_count;
     	lineOut->next = NULL;
     	
     	while(GetToken2(line, token1, &linePos)) {
@@ -439,13 +442,15 @@ int main() {
     	
     	if(lineOut->opcode != -1) {
     		printf("Adding line to output\n");
-    		if(dir > -1) {
+    		if(sec == 2) {
     			printf("Adding to head_data\n");
 				AddLine(lineOut, &head_data);
 			}
 			else {
-				printf("Adding to head_text\n");
-				AddLine(lineOut, &head_text);
+				if(sec == 1 ) {
+					printf("Adding to head_text\n");
+					AddLine(lineOut, &head_text);
+				}
 			}
 		}
 		else {
@@ -458,9 +463,11 @@ int main() {
     	}*/
     	printf("To next line o/\n");
     }
+    // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
     AdjustAdresses(symTable, lc[1]);
     ReplaceLists(symTable);
+    //FinalErrorCheck(symTable, head_text, head_data);
     printf("Writing to object file\n");
     WriteObjectFile(fp_out, head_text, head_data);
     printf("Deleting output lines\n");
@@ -469,15 +476,7 @@ int main() {
     DeleteSymTable(symTable);
 }
 
-void AdjustAdresses(sym_table_node *table, int lc_text) {
-	struct sym_table_node *tmp = table;
-	while(tmp != NULL) {
-		if(tmp->sec == 2) {
-			tmp->adress += lc_text;
-		}
-		tmp = tmp->next;
-	}
-}
+
 
 //Found an undefined operand and need to include it in replace_list. Includes at the front of list
 void AddReplace(struct replace_list_node **node, int *n) {
@@ -624,6 +623,20 @@ void DeleteOutputLines(struct output_line *first) {
     	free(tmp);
     }
 }
+
+void AdjustAdresses(sym_table_node *table, int lc_text) {
+	struct sym_table_node *tmp = table;
+	while(tmp != NULL) {
+		if(tmp->sec == 2) {
+			tmp->adress += lc_text;
+		}
+		tmp = tmp->next;
+	}
+}
+
+//void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data) {
+
+//}
 
 void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_line *first_data) {
 
