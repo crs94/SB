@@ -112,8 +112,6 @@ void DeleteSymTable(struct sym_table_node *table);
 
 struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 
-int IsValidLabel(struct op_table_node table[], char *token);
-
 void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceLists(struct sym_table_node *node);
@@ -136,12 +134,12 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
 int main(int argc, char *argv[]) {
 	
-	char usage[] = "Usage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
+	char usage[] = "\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
 	
 	char *input_file = argv[2];
 	char *output_file = argv[3];
-	char *pass_pre_out;
-	char *pass_zero_out;
+	char pass_pre_out[101];
+	char pass_zero_out[101];
 	int errors = 0;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
@@ -163,7 +161,7 @@ int main(int argc, char *argv[]) {
     
     	if ((fp_out = fopen(output_file, "w")) == NULL) {
 			printf("Could not open output file.\n");
-			return 0;
+			return 1;
 		}
 		
     	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
@@ -177,13 +175,13 @@ int main(int argc, char *argv[]) {
     }
     else {
 		if(!strcmp(argv[1], "-m")) {
-		
-			strcat(pass_pre_out, output_file);
+
+			strcpy(pass_pre_out, output_file);
 			strcat(pass_pre_out, ".pre");
 			
 			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 				printf("Could not open intermediate file 1.\n");
-				return 0;
+				return 1;
 			}
 			
 			if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
@@ -195,14 +193,14 @@ int main(int argc, char *argv[]) {
     		
     		if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 				printf("Could not open intermediate file 2.\n");
-				return 0;
+				return 1;
 			}
 			
 			if ((fp_out = fopen(output_file, "w")) == NULL) {
 				printf("Could not open output file.\n");
-				return 0;
+				return 1;
 			}
-    		
+
 			if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
     			printf("Pass zero returned errors\n");
     		}
@@ -216,12 +214,12 @@ int main(int argc, char *argv[]) {
 		else {
 			if (!strcmp(argv[1], "-o")) {
 			
-				strcat(pass_pre_out, output_file);
+				strcpy(pass_pre_out, output_file);
 				strcat(pass_pre_out, ".pre");
 			
 				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 					printf("Could not open intermediate file 1.\n");
-					return 0;
+					return 1;
 				}
 			
 				if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
@@ -233,15 +231,15 @@ int main(int argc, char *argv[]) {
 				
 				if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 					printf("Could not open intermediate file 2.\n");
-					return 0;
+					return 1;
 				}
 				
-				strcat(pass_zero_out, output_file);
+				strcpy(pass_zero_out, output_file);
 				strcat(pass_zero_out, ".mcr");
 			
 				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
 					printf("Could not open intermediate file 3.\n");
-					return 0;
+					return 1;
 				}
 				
 				if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
@@ -253,12 +251,12 @@ int main(int argc, char *argv[]) {
 				
 				if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
 					printf("Could not open intermediate file 4.\n");
-					return 0;
+					return 1;
 				}
 				
 				if ((fp_out = fopen(output_file, "w")) == NULL) {
 					printf("Could not open output file.\n");
-					return 0;
+					return 1;
 				}
 				
 				if(One_Pass(fp_in, fp_out, &line_table, &errors)) {
@@ -274,7 +272,7 @@ int main(int argc, char *argv[]) {
 			}
 			else {
 				printf("%s\n",usage);
-				return 0;
+				return 1;
 			}
 		}
 	}
@@ -1360,48 +1358,6 @@ struct op_table_node *SearchOp(struct op_table_node table[], char *token) {
     	if(!strcmp(table[n].name, token)) tmp = &table[n];
     }
     return tmp;
-}
-
-int IsValidLabel(struct op_table_node table[], char *token) {
-	
-	int i = (strlen(token) - 1);
-
-	if(isdigit(token[0])) {
-		return 0;
-	}
-	printf("IsValidLabel: first character not digit\n");
-	if(token[i] == ':') {
-		token[i] = '\0';
-	}
-	i--;
-	while (i >= 0) {
-		if((!isalnum(token[i])) && (token[i] != '_')) {
-			return 0;
-		}
-		i--;
-	}
-	printf("IsValidLabel: no forbidden characters in label\n");
-	for(i = 0; i < 14; i++) {
-		if(!strcmp(token, table[i].name)) {
-			return 0;
-		}
-	}
-	printf("IsValidLabel: label is not an operation\n");
-	if(!strcmp(token, "CONST")) {
-		return 0;
-	}
-	else {
-		if(!strcmp(token, "SPACE")) {
-			return 0;
-		}
-		else {
-			if(!strcmp(token, "SECTION")) {
-				return 0;
-			}
-		}
-	}
-	printf("IsValidLabel: label is not a directive\n");
-	return 1;
 }
 
 void AddLine(struct output_line *line, struct output_line **first) {
