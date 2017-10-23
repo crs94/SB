@@ -75,8 +75,7 @@ int main() {
 	int linec = 0; // Counts the line
     int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
-	int secText = 0;
-	int secData = 0;
+	int sec = 0;
 	int i = 0;
 	int inMacro = 0;
 	int firstMacro = 0;
@@ -91,12 +90,12 @@ int main() {
     struct fileLines *linesTmp = NULL;
 
     if ((fp_in = fopen(input_file, "r")) == NULL) {
-		printf("File not found.\n");
+		printf("Arquivo de entrada nao encontrado.\n");
 		return 0;
 	}
 
 	if ((fp_out = fopen(output_file, "w")) == NULL) {
-        printf("File not found!\n");
+        printf("Arquivo de saida nao encontrado\n");
         return 0;
     }
 
@@ -108,26 +107,45 @@ int main() {
         * If line has MACRO directive
         */
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
-            // Checks whether code has a MACRO within another MACRO
-            inMacro = 1;
-            if (linePos = GetToken(line, token1, linePos)) {
-                if (IsLabel(token1)) {
-                    firstMacro = 1;
-                    addMNT(&mntTable_Head, token1);
+            // Checks where the MACRO was declared
+            if (sec != 1) {
+                inMacro = 1;
+                if (linePos = GetToken(line, token1, linePos)) {
+                    // Checks if the first token is a label
+                    if (IsLabel(token1)) {
+                        firstMacro = 1;
+                        addMNT(&mntTable_Head, token1);
+                    }
+                    else {
+                        linesTmp = searchLines(linesTable_Head, linec);
+                        printf("Linha %d. Erro sintatico: MACRO sem rotulo.\n", linesTmp->lineNum);
+                    }
                 }
+                modifyLines(linesTable_Head, linec, 0);
             }
-            modifyLines(linesTable_Head, linec, 0);
+            else {
+                linesTmp = searchLines(linesTable_Head, linec);
+                printf("Linha %d. Erro semantico: MACRO fora da secao de texto.\n", linesTmp->lineNum);
+            }
         }
 
         /*
         * Else, if line has END directive
         */
-        else if (!strcmp(line, "END\n")) {
+        else {
             // To be correctly defined, the line must contain only END
-            tmpMDT = addMDT(&mdtTable_Head, line, linec);
-            inMacro = 0;
-            modifyLines(linesTable_Head, linec, 0);
-        }
+            if (!strcmp(line, "END\n")) {
+                // Checks whether END happens within a MACRO
+                if (inMacro) {
+                    tmpMDT = addMDT(&mdtTable_Head, line, linec);
+                    inMacro = 0;
+                    modifyLines(linesTable_Head, linec, 0);
+                }
+                else {
+                    linesTmp = searchLines(linesTable_Head, linec);
+                    printf("Linha %d. Erro semantico: END sem MACRO.\n", linesTmp->lineNum);
+                }
+            }
 
         /*
         * Else, line has neither MACRO nor END directive
@@ -155,8 +173,8 @@ int main() {
 
                     // If token1 is found on the MDT, found a MACRO
                     if (tmpMDT != NULL) {
-                        // Checks if there is something else in the line
                         linePos = GetToken(line, token2, linePos);
+                        // Checks if there is something else in the line
                         if (linePos == 0) {
                             while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
                                 fprintf(fp_out, "%s\n", tmpMDT->line);
@@ -167,23 +185,51 @@ int main() {
                         }
                         else {
                             linesTmp = searchLines(linesTable_Head, linec);
-                            printf("Linha %d. Erro: Tipo de argumento invalido. %s\n", linesTmp->lineMod, token2);
+                            printf("Linha %d. Erro sintatico: MACRO com parametro %s\n", linesTmp->lineMod, token2);
                             error_count++;
                         }
                     }
 
                     // Else, it is not a MACRO
                     else {
-                        fprintf(fp_out, "%s", line);
-                        linem++;
-                        modifyLines(linesTable_Head, linec, linem);
+                        // Checks whether the first token is not a label
+                        if (!IsLabel(token1)) {
+                            // Checks whether token is not SECTION
+                            if (strcmp(token1, "SECTION")) {
+                                fprintf(fp_out, "%s", line);
+                                linem++;
+                                modifyLines(linesTable_Head, linec, linem);
+                            }
+
+                            // Else, if token is SECTION
+                            else {
+                                linePos = GetToken(line, token2, linePos);
+                                // Checks whether it is in TEXT
+                                if (!strcmp(token2, "TEXT")) sec = 1;
+                                // Else, it is in DATA ou no section
+                                else sec = 0;
+                            }
+                        }
+
+                        // Else, if token is a label
+                        else {
+                            linePos = GetToken(line, token2, linePos);
+                            // Checks whether token is END
+                            if (!strcmp(token2, "END")) {
+                                linesTmp = searchLines(linesTable_Head, linec);
+                                printf("Linha %d. Erro sintatico: END com label.\n", linesTmp->lineMod);
+                            }
+                            fprintf(fp_out, "%s", line);
+                            linem++;
+                            modifyLines(linesTable_Head, linec, linem);
+                        }
                     }
                 }
             }
         }
     }
     // If some MACRO was not finished by the end of the code
-    if (inMacro) printf("Error: MACRO is missing END.\n");
+    if (inMacro) printf("Erro semantico: Falta END a uma das MACROS.\n");
 
     /*
     * After its use during passage zero, MNT and MDT will
@@ -193,10 +239,10 @@ int main() {
     deleteMNT(mntTable_Head);
 
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
-    	printf("\nEnd of Pass_Zero.\n");
+    	printf("\nFim da passagem zero.\n");
     }
     else {
-        printf("\nFiles were not closed properly during Pass_Zero.\n");
+        printf("\nOs arquivos não foram fechados corretamente após a passagem zero.\n");
     }
 
     return error_count;
