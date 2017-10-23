@@ -272,6 +272,7 @@ int IsLabel(char *token) {
 	}
 
 	if (token[i - 1] == ':') {
+		token[i - 1] = '\0';
 		return 1;
 	}
 	else {

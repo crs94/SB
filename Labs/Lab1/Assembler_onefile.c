@@ -1327,12 +1327,13 @@ void AddSym(struct sym_table_node **table, char *name, int address, int defined,
 			
 	int i = 0;
 	struct sym_table_node* new = (struct sym_table_node*)malloc(sizeof(struct sym_table_node));
-	for (i = 0; i < strlen(name); i++) {
+	/*for (i = 0; i < strlen(name); i++) {
 		if (name[i] == ':') {
 			new->label[i] = '\0';
 		}
 		else new->label[i] = name[i];
-	}
+	}*/
+	strcpy(new->label, name);
 	new->address = address;
 	new->defined = defined;
 	new->list = NULL;
@@ -1724,6 +1725,7 @@ int IsLabel(char *token) {
 	}
 
 	if (token[i - 1] == ':') {
+		token[i - 1] = '\0';
 		return 1;
 	}
 	else {

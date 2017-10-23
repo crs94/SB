@@ -247,6 +247,7 @@ int main() {
 
     return error_count;
 }
+}
 
 /*
 * Searches for labels in the MNT
