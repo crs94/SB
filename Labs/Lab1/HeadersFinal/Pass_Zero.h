@@ -17,7 +17,7 @@ struct MDT *searchMNT(struct MNT *table, char *token);
 
 struct MDT *addMDT(struct MDT **table, char *toAdd, int line);
 
-void addMNT(struct MNT **table, char *toAdd, struct MDT *first);
+void addMNT(struct MNT **table, char *toAdd);
 
 void deleteMDT(struct MDT *table);
 

@@ -290,7 +290,7 @@ int HexToInt(char *token) {
 		i--;
 		j++;
 	}*/
-	sscanf(token, "%x", num);
+	sscanf(token, "%d", &num);
 	sprintf(token, "%d", num);
 
 	return num;

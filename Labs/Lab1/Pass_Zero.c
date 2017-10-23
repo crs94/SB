@@ -102,8 +102,6 @@ int main() {
 
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)){
         linec++; // Increments line counter
-
-        printf("%s", line);
         linePos = 0;
 
         /*
@@ -147,7 +145,7 @@ int main() {
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
-                modify(linesTable_Head, linec, 0);
+                modifyLines(linesTable_Head, linec, 0);
             }
 
             // Else, if line is still in MACRO, but it's not longer the first
