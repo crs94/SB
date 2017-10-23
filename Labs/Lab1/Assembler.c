@@ -37,10 +37,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <utils.h>
+#include "utils.h"
 //#include "Preprocess.h"
 //#include "Pass_Zero.h"
 //#include "One_Pass.h"
+
+struct fileLines {
+    int lineNum;
+    int lineMod;
+    struct fileLines *next;
+};
 
 int main(int argc, char *argv[]) {
 	
@@ -48,20 +54,23 @@ int main(int argc, char *argv[]) {
 	
 	char input_file[] = argv[2];
 	char output_file[] = argv[3];
-	char pass_pre_out[] = argv[3];
-	char pass_zero_out[] = argv[3];
+	char *pass_pre_out;
+	char *pass_zero_out;
+	int errors = 0;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
+	struct fileLines *line_table = NULL;
+	
 	
 	if(argc != 4) {
 		//checar extensão válida de argv[3]? escrever extensão correta mesmo assim?
 		printf("%s\n",usage);
-		return 0;
+		return 1;
 	}
 
     if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("Input file not found.\n");
-		return 0;
+		return 1;
 	} 
 
     if(!strcmp(argv[1], "-p")) {
@@ -71,16 +80,19 @@ int main(int argc, char *argv[]) {
 			return 0;
 		}
 		
-    	Preprocess(fp_in, fp_out);
+    	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
+    		printf("Preprocessing step returned errors\n");
+    	}
     	
     	fclose(fp_in);
     	fclose(fp_out);
     	
-    	return 1;
+    	return errors;
     }
     else {
 		if(!strcmp(argv[1], "-m")) {
 		
+			strcat(pass_pre_out, output_file);
 			strcat(pass_pre_out, ".pre");
 			
 			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
@@ -114,6 +126,7 @@ int main(int argc, char *argv[]) {
 		else {
 			if (!strcmp(argv[1], "-o")) {
 			
+				strcat(pass_pre_out, output_file);
 				strcat(pass_pre_out, ".pre");
 			
 				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
@@ -130,7 +143,8 @@ int main(int argc, char *argv[]) {
 					printf("Could not open intermediate file 2.\n");
 					return 0;
 				}
-			
+				
+				strcat(pass_zero_out, output_file);
 				strcat(pass_zero_out, ".mcr");
 			
 				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {

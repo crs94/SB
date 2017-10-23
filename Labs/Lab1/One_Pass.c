@@ -70,7 +70,7 @@ struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
 void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section);
 void DeleteSymTable(struct sym_table_node *table);
 struct op_table_node *SearchOp(struct op_table_node *table, char *token);
-int IsValidLabel(struct op_table_node table[], char *token);
+//int IsValidLabel(struct op_table_node table[], char *token);
 void AddReplace(struct replace_list_node **node, int *n);
 void ReplaceLists(struct sym_table_node *node);
 void AddLine(struct output_line *line, struct output_line **head);
@@ -154,7 +154,7 @@ int main() {
     		printf("In second while\n");
 			if(token1[strlen(token1) - 1] == ':') {
     			printf("Found Label in line %d\n", line_count);
-				if(IsValidLabel(opTable, token1)) {
+				if(IsLabel(token1)) {
 					if(label_count == 0) {
 						tmp_sym = SearchSym(symTable, token1);
 						if(tmp_sym == NULL) {
@@ -577,7 +577,7 @@ struct op_table_node *SearchOp(struct op_table_node table[], char *token) {
     }
     return tmp;
 }
-
+/*
 int IsValidLabel(struct op_table_node table[], char *token) {
 	
 	int i = (strlen(token) - 1);
@@ -619,6 +619,7 @@ int IsValidLabel(struct op_table_node table[], char *token) {
 	printf("IsValidLabel: label is not a directive\n");
 	return 1;
 }
+*/
 
 void AddLine(struct output_line *line, struct output_line **first) {
 	struct output_line *tmp = *first;

@@ -205,6 +205,70 @@ int IsLabel(char *token) {
 			}
 		}
 	}
+	
+	if(!strcmp(token, "EQU:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "IF:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "MACRO:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "END:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "SECTION:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "SPACE:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "CONST:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "ADD:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "SUB:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "MULT:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "DIV:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "JMP:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "JMPN:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "JMPP:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "JMPZ:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "COPY:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "LOAD:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "STORE:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "INPUT:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "OUTPUT:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "STOP:")) {
+		return 0;
+	}
 
 	if (token[i - 1] == ':') {
 		return 1;
