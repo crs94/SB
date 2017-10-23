@@ -109,48 +109,76 @@ int main() {
         * If line has MACRO directive
         */
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
-            inMacro = 1;
-            if (linePos = GetToken(line, token1, linePos)) {
-                if (IsLabel(token1)) {
-                    firstMacro = 1;
-                    addMNT(&mntTable_Head, token1);
+            // Checks whether code has a MACRO within another MACRO
+            if (!inMacro) {
+                inMacro++;
+                if (linePos = GetToken(line, token1, linePos)) {
+                    if (IsLabel(token1)) {
+                        firstMacro = 1;
+                        addMNT(&mntTable_Head, token1);
+                    }
                 }
+                modifyLines(linesTable_Head, linec, 0);
             }
-            modifyLines(linesTable_Head, linec, 0);
+            else printf("Line %d. Error: Nested MACRO.\n", linec);
         }
-        else if (strstr(line, "END ") || strstr(line, "END\n")) {
-            // TODO Think of a new way of comparing this
+
+        /*
+        * Else, if line has END directive
+        */
+        else if (!strcmp(line, "END\n")) {
+            // To be correctly defined, the line must contain only END
             tmpMDT = addMDT(&mdtTable_Head, line, linec);
-            inMacro = 0;
+            inMacro--;
             modifyLines(linesTable_Head, linec, 0);
         }
+
+        /*
+        * Else, line has neither MACRO nor END directive
+        */
         else {
+            // If line is the first line in MACRO definition
             if ((inMacro) && (firstMacro)) {
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
+                modify(linesTable_Head, linec, 0);
+            }
+
+            // Else, if line is still in MACRO, but it's not longer the first
+            else if ((inMacro) && (!firstMacro)) {
                 tmpMDT = addMDT(&mdtTable_Head, line, linec);
                 modifyLines(linesTable_Head, linec, 0);
             }
+
+            // Else, line is not inside of MACRO definition
             else {
                 if (linePos = GetToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
+
+                    // If token1 is found on the MDT, found a MACRO
                     if (tmpMDT != NULL) {
                         while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
                             fprintf(fp_out, "%s\n", tmpMDT->line);
-                            linem++;
-                            insertLines(linesTable_Head, tmpMDT->lineNum, linem);
+                            linem = insertLines(linesTable_Head, tmpMDT->lineNum, linem);
+                            linec = linem;
                             tmpMDT = tmpMDT->next;
                         }
                     }
-                    else fprintf(fp_out, "%s", line);
-                    linem++;
-                    modifyLines(linesTable_Head, linec, linem);
+
+                    // Else, it is not a MACRO
+                    else {
+                        fprintf(fp_out, "%s", line);
+                        linem++;
+                        modifyLines(linesTable_Head, linec, linem);
+                    }
                 }
             }
         }
     }
+    // If some MACRO was not finished by the end of the code
+    if (inMacro) printf("Error: MACRO is missing END.\n");
 
     /*
     * After its use during passage zero, MNT and MDT will
