@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 //#include "utils.h"
 
 #define LINE_LENGTH 560
@@ -287,19 +288,24 @@ int IsHex(char *token) {
  */
 int HexToInt(char *token) {
 
-	//int i = strlen(token);
-	//int j = 0;
-	int num = 0;
+	int i = strlen(token) - 1;
+	int j = 0;
+	int digit = 0;
+	int sum = 0;
+	char aux = token[i];
 
-	/*while(i > 0) {
-		sum+=(token[i]*(pow(16, j)));
+	while ((i > 0) && (aux != 'X')) {
+		if ((aux > 47) && (aux < 58)) digit = aux - 48;
+		else if ((aux > 64) && (aux < 71)) digit = aux - 55;
+		sum+=(digit*(pow(16, j)));
 		i--;
 		j++;
-	}*/
-	sscanf(token, "%d", &num);
-	sprintf(token, "%d", num);
+		aux = token[i];
+	}
 
-	return num;
+	if (token[0] == '-') sum *= -1;
+
+	return sum;
 }
 
 
