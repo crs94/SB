@@ -79,16 +79,16 @@ void AddReplace(struct replace_list_node **node, int *n);
 void ReplaceLists(struct sym_table_node *node);
 void AddLine(struct output_line *line, struct output_line **head);
 void DeleteOutputLines(struct output_line *first);
-void WriteObjectFile(FILE *fp, struct output_line *first);
-void AdjustAdresses(sym_table_node *table, int lc_text);
-//void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data);
+void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_line *first_data);
+void AdjustAdresses(struct sym_table_node *table, int lc_text);
+void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText);
 
 
 int main() {
 
 	char line[LINE_LENGTH];
 	char token1[TOKEN_LENGTH];
-	char input_file[] = "TestFiles/teste1.asm";
+	char input_file[] = "TestFiles/output_macro.txt";
 	char output_file[] = "TestFiles/Object.txt";
 	char *dirTable[] = {"SPACE", "CONST", "SECTION"};
 	int linePos = 0;
@@ -98,7 +98,7 @@ int main() {
 	int sec = 0;
 	int offset = 0;
 	//int lc = 0;
-	int lc[3] = {0, 0, 0}
+	int lc[3] = {0, 0, 0};
 	int line_count = 0;
 	int label_count = 0;
 	int opr_count = 0;
@@ -128,17 +128,17 @@ int main() {
 										"STOP", 14, 0 
 										};
 
-	if ((fp_in = fopen(input_file, "r")) == NULL) {
+	if((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("File not found.\n");
 		return 0;
 	} 
 
-	if ((fp_out = fopen(output_file, "w")) == NULL) {
+	if((fp_out = fopen(output_file, "w")) == NULL) {
         printf("File not found!\n");
         return 0;
     }
     
-    while (GetLine(fp_in, line)) {
+    while(GetLine(fp_in, line)) {
     
     	printf("In first while\n");
     	line_count++;
@@ -174,6 +174,7 @@ int main() {
 								printf("Found definition of previous forward reference\n");
 								tmp_sym->defined = 1;
 								tmp_sym->address = lc[sec];
+								tmp_sym->sec = sec;
 								//replace = tmp_sym; 
 								//Can't replace yet because of vector length. will replace after the line is processed.
 							}
@@ -195,15 +196,15 @@ int main() {
 					tmp_op = SearchOp(opTable, token1);
 					if(tmp_op != NULL) { //found an operation
 						printf("Found operation in line %d\n", line_count);
-						if(sec_data) {
+						if(sec == 2) {
 							printf("Linha %d. Erro: Instrução dentro da seção de dados.\n", line_count);
 						}
 						else {
-							if(!sec_text) {
+							if(!sec) {
 								printf("Linha %d. Erro: Instrução fora da seção de texto.\n", line_count);
 							}
 						}
-						lc[sec]+=(tmp_op->operands+1);
+						lc[1]+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						opr_count = 0;
 						// Gets operands and any other tokens in the line
@@ -212,6 +213,9 @@ int main() {
 							if(IsValid(token1) || 
 							// I think this won't work when firt operand of COPY has offset
 							((opr_count == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
+								if(token1[strlen(token1)-1] == ',') {
+									token1[strlen(token1)-1] = '\0';
+								}
 								if(opr_count < tmp_op->operands) {
 									printf("Gonna search symbol!\n");
 									tmp_sym = SearchSym(symTable, token1);
@@ -221,17 +225,19 @@ int main() {
 										}
 										else {
 											lineOut->op[opr_count] = -1;
-											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);	
+											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
+											tmp_sym = symTable; //used in next else	
+											printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 										}
 									}
 									else {
 										// First forward reference
 										printf("Found forward reference to %s in line %d\n", token1, line_count);
-										AddSym(&symTable, token1, -1, 0, sec);
+										AddSym(&symTable, token1, -1, 0, 0);
 										printf("Added forward reference to SymTable\n");
 										lineOut->op[opr_count] = -1;
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
-										tmp_sym = symTable; //used in next else
+										//tmp_sym = symTable; //used in next else
 										printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 									}
 								}
@@ -244,11 +250,15 @@ int main() {
 								if((!strcmp(token1, "+")) && (opr_count > 0) && (opr_count <= tmp_op->operands)) {
 									if(tmp_sym != NULL) { //if previous token was an operand
 										if(GetToken2(line, token1, &linePos)) {
+											printf("Found offset\n");
 											if(IsNumber(token1)) { //checks if token is a number
+												printf("offset is a number\n");
 												offset = atoi(token1);
-												if(tmp_sym->defined) { //previous operand is defined in symTable
-													if(offset <= tmp_sym->vector) {
-														lineOut->op[opr_count-1]+=offset;
+												//previous operand is defined in symTable
+												if((tmp_sym->defined) && (tmp_sym->sec == 1)) { 
+													printf("offset to previously defined label\n");
+													if((offset < (tmp_sym->vector))) {
+														lineOut->op[opr_count-1] += offset;
 													}
 													else {
 														printf("Linha %d. Erro: offset muito grande! %s.\n", line_count);
@@ -299,14 +309,14 @@ int main() {
 							}
 							if(dir == 0) { //SPACE
 								//incrementa LC e processa
-								//inclui valor de vector no nodo apontado por replace
+								//inclui valor de vector no nodo apontado por tmp_sym
 								if(label_count == 1) {
 									i = 0;
 									while(GetToken2(line, token1, &linePos)) {
 										if(i == 0) {
 											if(IsNumber(token1)) { //checks if token is a number
 												offset = atoi(token1);
-												lc[sec] += offset;
+												lc[2] += offset;
 												tmp_sym->vector = offset;
 												lineOut->opcode = 15;
 												lineOut->op[0] = offset;
@@ -322,7 +332,7 @@ int main() {
 									}
 									else {
 										if(i == 0) {
-											lc[sec] += 1;
+											lc[2]++;
 											lineOut->opcode = 15;
 											lineOut->op[0] = 1;
 										}
@@ -342,14 +352,14 @@ int main() {
 											if(i == 0) {
 												if(IsHex(token1)) {
 													offset = HexToInt(token1);
-													lc[sec]++;
+													lc[2]++;
 													lineOut->opcode = 0;
 													lineOut->op[0] = offset;
 												}
 												else {
 													if(IsNumber(token1)) { //checks if token is a number
 														offset = atoi(token1);
-														lc[sec]++;
+														lc[2]++;
 														lineOut->opcode = 0;
 														lineOut->op[0] = offset;
 													}
@@ -382,9 +392,8 @@ int main() {
 												if(i == 0) {
 													if(IsValid(token1)) { //checks if token is a number
 														if(!strcmp(token1, "TEXT")) {
-															if(!sec_text) {	
-																sec_text = 1;
-																sec_data = 0;
+															if(sec != 1) {	
+																sec = 1;
 																printf("Found TEXT Section.\n");
 															}
 															else {
@@ -394,9 +403,8 @@ int main() {
 														}
 														else {
 															if(!strcmp(token1, "DATA")) {
-																if(!sec_data) {	
-																	sec_data = 1;
-																	sec_text = 0;
+																if(sec != 2) {	
+																	sec = 2;
 																	printf("Found DATA Section.\n");
 																}
 																else {
@@ -417,7 +425,7 @@ int main() {
 												i++;
 											}
 											if(i == 0) {
-												printf("Linha %d. Erro: Diretiva SPACE sem operandos.\n", line_count);
+												printf("Linha %d. Erro: Diretiva SECTION sem operandos.\n", line_count);
 											}
 											else {
 												if(i > 1) {
@@ -463,17 +471,23 @@ int main() {
     	}*/
     	printf("To next line o/\n");
     }
+    printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
     // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
     AdjustAdresses(symTable, lc[1]);
     ReplaceLists(symTable);
-    //FinalErrorCheck(symTable, head_text, head_data);
+    FinalErrorCheck(symTable, head_text, head_data, lc[1]);
     printf("Writing to object file\n");
     WriteObjectFile(fp_out, head_text, head_data);
     printf("Deleting output lines\n");
-    DeleteOutputLines(head);
+    DeleteOutputLines(head_text);
+    DeleteOutputLines(head_data);
     printf("Deleting symbol table\n");
     DeleteSymTable(symTable);
+    printf("Closing files\n");
+    fclose(fp_in);
+    fclose(fp_out);
+    printf("FINISHED!\n");
 }
 
 
@@ -491,19 +505,26 @@ void AddReplace(struct replace_list_node **node, int *n) {
  * Replaces replace list of each node in SymTable and deletes the replace list
  */
 void ReplaceLists(struct sym_table_node *node) {
-	struct replace_list_node *tmp = node->list;
-	struct sym_table_node *temp = table;
+
+	struct replace_list_node *tmp = NULL;
+	struct sym_table_node *temp = node;
+	
 	while(temp != NULL) {
+		tmp = temp->list;
+		printf("Replacing references for %s\n", temp->label);
 		while (tmp != NULL) {
-			printf("Replacing reference\n");
-			*(tmp->replace) = (node->address + tmp->offset);
+			printf("InWhile\n");
+			printf("Replacing %d with %d\n",*tmp->replace, (temp->address + tmp->offset));
+			(*tmp->replace) = (temp->address + tmp->offset);
+			printf("Replaced\n");
 		    tmp = tmp->next; //does it need to go after replacing? 
 		}
-		tmp = node->list;
-		printf("Deleting list of replaces in node %s\n", node->label);
-		while(node->list != NULL) {
-			tmp = node->list;
-			node->list = node->list->next;
+		
+		printf("Deleting list of replaces in node %s\n", temp->label);
+		while(temp->list != NULL) {
+			tmp = temp->list;
+			temp->list = temp->list->next;
+			printf("Deleting\n");
 			free(tmp);
 		}
 		temp = temp->next;
@@ -538,6 +559,7 @@ void AddSym(struct sym_table_node **table, char *name, int address, int defined,
 	new->defined = defined;
 	new->list = NULL;
 	new->vector = 0;
+	new->sec = section;
 	new->next = *table;
 	*table = new;
 }
@@ -624,19 +646,108 @@ void DeleteOutputLines(struct output_line *first) {
     }
 }
 
-void AdjustAdresses(sym_table_node *table, int lc_text) {
+void AdjustAdresses(struct sym_table_node *table, int lc_text) {
+	printf("Adjusting addresses\n");
 	struct sym_table_node *tmp = table;
 	while(tmp != NULL) {
 		if(tmp->sec == 2) {
-			tmp->adress += lc_text;
+			printf("Adding %d to %d in node %s\n", (lc_text + 1), tmp->address, tmp->label);
+			tmp->address += (lc_text + 1);
 		}
 		tmp = tmp->next;
 	}
 }
 
-//void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data) {
-
-//}
+void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText) {
+	printf("Checking errors\n");
+	struct sym_table_node *tmp;
+	struct output_line *temp = text;
+	struct output_line *temp2 = data;
+	int i = (secText + 1);
+	
+	while(temp != NULL) {
+	
+		//if(temp->op[0] == -1) {
+			//tirar linha da lista
+			//temp2 = temp;
+			//*temp = &temp->next;
+		
+		printf("Checking condition 1\n");
+		if((temp->opcode > 4) && (temp->opcode < 9)) {
+			if(temp->op[0] > i) {
+				printf("Linha %d. Erro: pulo para seção inválida\n", temp->line);
+				// Que mais fazer?
+			}
+		}
+		else {
+		
+			printf("Checking condition 2\n");
+			if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) || 
+				((temp->op[1] > -1) && (temp->op[1] < i))) {
+				
+				printf("Linha %d. Erro: Instrução referencia seção inválida\n", temp->line);
+			}
+			
+			printf("Checking condition 6\n");
+			if(temp->opcode == 9) {
+				while((i < temp->op[1]) && (temp2 != NULL)) {
+					if(temp2->opcode == 15) {
+						i += temp2->op[0];
+					}
+					else {
+						i++;
+					}
+					temp2 = temp2->next;
+				}
+				if(temp2->opcode == 0) {
+					printf("Linha %d. Erro: Modificação de valor constante\n", temp->line);
+				}
+				i = (secText + 1);
+				temp2 = data;
+			}
+			else {
+				printf("Checking condition 5\n");
+				if((temp->opcode ==11) || (temp->opcode == 12)) {
+					while((i < temp->op[0]) && (temp2 != NULL)) {
+						if(temp2->opcode == 15) {
+							i += temp2->op[0];
+						}
+						else {
+							i++;
+						}
+						temp2 = temp2->next;
+					}
+					if(temp2->opcode == 0) {
+						printf("Linha %d. Erro: Modificação de valor constante\n", temp->line);
+					}
+					i = (secText + 1);
+					temp2 = data;
+				}
+				else {
+					printf("Checking condition 4\n");
+					if(temp->opcode == 4) {
+						while((i < temp->op[0]) && (temp2 != NULL)) {
+							if(temp2->opcode == 15) {
+								i += temp2->op[0];
+							}
+							else {
+								i++;
+							}
+							temp2 = temp2->next;
+						}
+						if(temp2->op[0] == 0) {
+							printf("Linha %d. Erro: divisão por zero\n", temp->line);
+						}
+						i = (secText + 1);
+						temp2 = data;
+					}
+				}
+			}
+		}
+		
+		temp = temp->next;
+	}
+}
 
 void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_line *first_data) {
 
@@ -645,15 +756,16 @@ void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_lin
 	
 	while(tmp != NULL) {
     	if(tmp->opcode > -1) {
-    		
-    			else {
-    				fprintf(fp, "%d %d ", tmp->opcode, tmp->op[0]);
-    				if(tmp->op[1] > -1) {
-    					fprintf(fp, "%d ", tmp->op[1]);
-    				}
-    				fprintf(fp, "\n");
-    			}
-    		}
+    		if(tmp->opcode == 14) {
+    			fprintf(fp, "%d\n", tmp->opcode);
+			}
+			else {
+				fprintf(fp, "%d %d ", tmp->opcode, tmp->op[0]);
+				if(tmp->op[1] > -1) {
+					fprintf(fp, "%d ", tmp->op[1]);
+				}
+				fprintf(fp, "\n");
+			}
     	}
     	tmp = tmp->next;
     }
@@ -663,16 +775,15 @@ void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_lin
     while(tmp != NULL) {
     	if(tmp->opcode == 0) { //CONST
     			fprintf(fp, "%d\n", tmp->op[0]);
-    		}
-    		else {
-    			if(tmp->opcode == 15) { //SPACE
-    				for(n = 0; n < tmp->op[0]; n++) {
-    					fprintf(fp, "0 ");
-    				}
-    				fprintf(fp, "\n");
-    			}
-    		}
-    	}
+		}
+		else {
+			if(tmp->opcode == 15) { //SPACE
+				for(n = 0; n < tmp->op[0]; n++) {
+					fprintf(fp, "0 ");
+				}
+				fprintf(fp, "\n");
+			}
+		}
     	tmp = tmp->next;
     }
 }

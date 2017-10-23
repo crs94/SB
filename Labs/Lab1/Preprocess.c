@@ -65,8 +65,8 @@ int main() {
 	char lineOut[LINE_LENGTH];
 	char token1[TOKEN_LENGTH];
 	char token2[TOKEN_LENGTH];
-	char input_file[] = "TestFiles/SB_test_getline.asm";
-	char output_file[] = "TestFiles/output.txt";
+	char input_file[] = "TestFiles/triangulo.asm";
+	char output_file[] = "TestFiles/output_pre.txt";
 	int linec = 0; // Counts the line
 	int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
@@ -204,7 +204,7 @@ int main() {
 		    					// Searches for the operand in EQU table
 		    					tmp = SearchEQU(equTable_Head, token1);
 		    					// Operand was found in the table or is a number
-		    					if((tmp != NULL) || (isNumber(token1))) {
+		    					if((tmp != NULL) || (IsNumber(token1))) {
 		    						// Checks if there is more than one operand
 		    						if(!(linePos = GetToken(line, token1, linePos))) {
 		    							// Skips line if operand is a zero
@@ -280,7 +280,7 @@ int main() {
     while ((fclose(fp_in) != 0) || (fclose(fp_out) != 0)) { // What to do if error occurs?
     	printf("\nClosing files... ");
     }
-    printf("End of Preprocess.\n\n")
+    printf("End of Preprocess.\n\n");
 
     return 0;
 }

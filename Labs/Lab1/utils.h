@@ -37,6 +37,9 @@
 #include <string.h>
 //#include "utils.h"
 
+#define LINE_LENGTH 560
+#define TOKEN_LENGTH 101
+
 struct fileLines {
     int lineNum;
     int lineMod;
@@ -264,7 +267,7 @@ int IsHex(char *token) {
 
 	if((token[0] == '0') && (token[1] == 'X')) {
 		for(i = 2; i<strlen(token); i++) {
-			if((token[i] < 0) || (token[i] > 15)) return 0;
+			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
 		}
 		return 1;
 	}
