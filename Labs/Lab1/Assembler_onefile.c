@@ -5,32 +5,28 @@
 #define LINE_LENGTH 560
 #define TOKEN_LENGTH 101
 
-struct fileLines {
-    int lineNum;
-    int lineMod;
-    struct fileLines *next;
+struct fileLines {						// Struct to keep line offsets between passes
+    int lineNum;						// Original line number in assembly source
+    int lineMod;						// Modified line number after pass
+    struct fileLines *next;				// Pointer to next node
 };
 
-/*
- *This structure holds the symbol/label defined in an EQU directive
- * and the value by which it is to be replaced.
- */
-struct equ_tab {
-	char label[TOKEN_LENGTH];
-	char value[TOKEN_LENGTH];
-	struct equ_tab *next;
+struct equ_tab {						// Struct to hold symbol-value pairs defined in EQU directives
+	char label[TOKEN_LENGTH];			// Symbol to be replaced
+	char value[TOKEN_LENGTH];			// Symbol by which to replace label
+	struct equ_tab *next;				// Pointer to next node
 };
 
-struct MNT {
-    char label[101];
-    struct MDT *begin;
-    struct MNT *next;
+struct MNT {							// Macro Name Table. Keeps names of macros
+    char label[TOKEN_LENGTH];			// Name of macro
+    struct MDT *begin;					// First line of macro in Macro Definition Table
+    struct MNT *next;					// Pointer to next macro
 };
 
-struct MDT {
-    char line[601];
-    int lineNum;
-    struct MDT *next;
+struct MDT {							// Macro Definition Table. Holds lines of macros
+    char line[LINE_LENGTH];				// Line as defined in source code
+    int lineNum;						// Line number where line occurs
+    struct MDT *next;					// Pointer to next line
 };
 
 struct op_table_node {					// Struct to store a node of the operations table
@@ -39,10 +35,10 @@ struct op_table_node {					// Struct to store a node of the operations table
 	int operands;						// Number of operands
 };
 
-struct replace_list_node {				//
-	int *replace;						//
-	int offset;							//
-	struct replace_list_node *next;		//
+struct replace_list_node {				// Struct to hold list of references of a symbol to be replaced later
+	int *replace;						// Pointer to element that needs to be replaced
+	int offset;							// Additional offset (for example ADD N1 + 1)
+	struct replace_list_node *next;		// Pointer to next node
 };
 
 struct sym_table_node {					// Struct to store a node of the symbol table
@@ -51,15 +47,15 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	int defined;						// 1 if label definition was found. 0 otherwise
 	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
-	int sec;
+	int sec;							// Section in which symbol is defined
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
-struct output_line {					//
-	int opcode;							//
-	int op[2];							//
-	int line;							//
-	struct output_line *next;			//
+struct output_line {					// Struct to hold output to be written to file until pass one finishes
+	int opcode;							// Opcode (0 for CONST, 15 for SPACE)
+	int op[2];							// Operands
+	int line;							// Line number where operation or directive occurs
+	struct output_line *next;			// Pointer to next node
 };
 
 int GetLine(FILE *fp, char *lineBuffer);
@@ -130,24 +126,26 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 
 int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
 
-/******************** MAIN ************************/
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
+
+/********************************** MAIN ********************************/
 
 int main(int argc, char *argv[]) {
 	
-	char usage[] = "\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
+	// Error message displayed if wrong arguments are passed to the program
+	char usage[] = "\n\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
 	
-	char *input_file = argv[2];
-	char *output_file = argv[3];
-	char pass_pre_out[101];
-	char pass_zero_out[101];
-	int errors = 0;
-	FILE *fp_in = NULL;
-	FILE *fp_out = NULL;
-	struct fileLines *line_table = NULL;
+	char *input_file = argv[2];				// Name of input file
+	char *output_file = argv[3];			// Name of output file
+	char pass_pre_out[TOKEN_LENGTH];		// Name of output file from preprocessing step
+	char pass_zero_out[TOKEN_LENGTH];		// Name of output file from pass zero
+	int errors = 0;							// Error counting
+	FILE *fp_in = NULL;						// Pointer to input files
+	FILE *fp_out = NULL;					// Pointer to output files
+	struct fileLines *line_table = NULL;	// Pointer to beginning of lines table
 	
 	
 	if(argc != 4) {
-		//checar extensão válida de argv[3]? escrever extensão correta mesmo assim?
 		printf("%s\n",usage);
 		return 1;
 	}
@@ -280,32 +278,37 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-/**************************************** PREPROCESS ***************************************/
+/***************************** PREPROCESS *********************************/
 
 int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
 	
-	char line[LINE_LENGTH];
-	char lineOut[LINE_LENGTH];
-	char token1[TOKEN_LENGTH];
-	char token2[TOKEN_LENGTH];
-	int linec = 0; // Counts the line
-	int linem = 0; // Counts the lines that will be on the output file
-	int linePos = 0;
-	int sec = -1;
-	int endFile = 0;
-	int i = 0;
-	struct equ_tab *equTable_Head = NULL;
-	struct equ_tab *tmp = NULL;
-	struct fileLines *linesTmp = NULL;
+	char line[LINE_LENGTH];					//
+	char lineOut[LINE_LENGTH];				//
+	char token1[TOKEN_LENGTH];				//
+	char token2[TOKEN_LENGTH];				//
+	int linec = 0; 							// Counts the line
+	int linem = 0; 							// Counts the lines that will be on the output file
+	int linePos = 0;						//
+	int sec = -1;							//
+	int endFile = 0;						//
+	int i = 0;								//
+	struct equ_tab *equTable_Head = NULL;	//
+	struct equ_tab *tmp = NULL;				//
+	struct fileLines *linesTmp = NULL;		//
 
-    line[0] = '\0';
-    lineOut[0] = '\0';
+    //line[0] = '\0';
 
-    //while ((GetLine(fin, line)) || (strlen(line) > 0)) {
     while(GetLine(fin, line)) {
-    	linec++; // Increments line counter
-    	addLines(linesTable_Head, linec, linec);	// Adds line in line reference table
-		//addLines(&linesTable_Head, linec, linec); 
+    
+    	// Increments line counter
+    	linec++; 
+    	
+    	// Adds line in line reference table
+    	addLines(linesTable_Head, linec, linec);	
+    	
+    	i = 0;
+	    lineOut[0] = '\0';
+	    linePos = 0;
 
 		/*
 		 * If line is not only blanks and/or '\n'
@@ -516,7 +519,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	 							else if(!strcmp(token1, "DATA")) {
 	 								sec = 2;
 	 							}
-	 							else sec = 3; //unknown section
+	 							else sec = 3; // SECTION with invalid operand
 	 						}
 	 					}
 
@@ -531,14 +534,8 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 		    		
 		    		linem++;
 		    		modifyLines(*linesTable_Head, linec, linem);
-		    		//modifyLines(linesTable_Head, linec, linem);
 	    		}
-
 	    	}
-
-	    	i = 0;
-	    	lineOut[0] = '\0';
-	    	linePos = 0;
 	    }
 	    /*
 	    * Else, if line only has blanks and/or '\n'
@@ -546,7 +543,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    * lines is modified so the actual reference
 	    * is for a non existent line on the output file
 	    */
-	    //else modifyLines(*linesTable_Head, linec, 0)
 	    else modifyLines(*linesTable_Head, linec, 0);
     }
 
@@ -565,25 +561,26 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 
 int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
 
-    char line[LINE_LENGTH];
-	char lineOut[LINE_LENGTH];
-	char token1[TOKEN_LENGTH];
-	char token2[TOKEN_LENGTH];
-	int linec = 0; // Counts the line
-    int linem = 0; // Counts the lines that will be on the output file
-	int linePos = 0;
-	int sec = -1;
-	int i = 0;
-	int inMacro = 0;
-	int firstMacro = 0;
-	struct MDT *mdtTable_Head = NULL;
-    struct MDT *tmpMDT = NULL;
-    struct MNT *mntTable_Head = NULL;
-	struct MNT *tmpMNT = NULL;
-    struct fileLines *linesTmp = NULL;
+    char line[LINE_LENGTH];				//
+	char lineOut[LINE_LENGTH];			//
+	char token1[TOKEN_LENGTH];			//
+	char token2[TOKEN_LENGTH];			//
+	int linec = 0; 						// Counts the line
+    int linem = 0; 						// Counts the lines that will be on the output file
+	int linePos = 0;					//
+	int sec = -1;						//
+	int i = 0;							//
+	int inMacro = 0;					//
+	int firstMacro = 0;					//
+	struct MDT *mdtTable_Head = NULL;	//
+    struct MDT *tmpMDT = NULL;			//
+    struct MNT *mntTable_Head = NULL;	//
+	struct MNT *tmpMNT = NULL;			//
+    struct fileLines *linesTmp = NULL;	//
 
 
-    while ((GetLine(fin, line)) || (strlen(line) > 0)){
+    //while ((GetLine(fin, line)) || (strlen(line) > 0)){
+    while (GetLine(fin, line)) {
         linec++; // Increments line counter
 		linesTmp = searchLines(*linesTable_Head, linec);
 		linec = linesTmp->lineNum;
@@ -729,26 +726,28 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
 int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
 
-	char line[LINE_LENGTH];
-	char token1[TOKEN_LENGTH];
-	char *dirTable[] = {"SPACE", "CONST", "SECTION"};
-	int linePos = 0;
-	int i = 0;
-	int sec = 0;
-	int offset = 0;
-	int lc[3] = {0, 0, 0};
-	int line_count = 0;
-	int label_count = 0;
-	int opr_count = 0;
-	int dir = -1;
-	struct output_line *head_text = NULL;
-	struct output_line *head_data = NULL;
-	struct output_line *lineOut = NULL; //linha atual
-	struct sym_table_node *symTable = NULL;
-	struct sym_table_node *tmp_sym = NULL;
-	struct fileLines *tmp_line = NULL;
-	struct op_table_node *tmp_op = NULL;
-	struct op_table_node opTable[] = {	"ADD", 1, 1,
+	char line[LINE_LENGTH];								//
+	char token1[TOKEN_LENGTH];							//
+	char *dirTable[] = {"SPACE", "CONST", "SECTION"};	//
+	int linePos = 0;									//
+	int i = 0;											//
+	int sec = 0;										//
+	int offset = 0;										//
+	int lc[3] = {0, 0, 0};								//
+	int line_count = 0;									//
+	int label_count = 0;								//
+	int opr_count = 0;									//
+	int dir = -1;										//
+	struct output_line *head_text = NULL;				//
+	struct output_line *head_data = NULL;				//
+	struct output_line *lineOut = NULL;					//
+	struct sym_table_node *symTable = NULL;				//
+	struct sym_table_node *tmp_sym = NULL;				//
+	struct fileLines *tmp_line = NULL;					//
+	struct op_table_node *tmp_op = NULL;				//
+	
+	// Operation Table
+	struct op_table_node opTable[] = {	"ADD", 1, 1,	
 										"SUB", 2, 1,
 										"MULT", 3, 1,
 										"DIV", 4, 1,
