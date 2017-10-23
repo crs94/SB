@@ -206,8 +206,8 @@ int main() {
 		    				if(linePos = GetToken(line, token1, linePos)) {
 		    					// Searches for the operand in EQU table
 		    					tmp = SearchEQU(equTable_Head, token1);
-		    					// Operand was found in the table or is a number
-		    					if((tmp != NULL) || (IsNumber(token1))) {
+		    					// Operand was found in the table or is 0/1
+		    					if((tmp != NULL) || (atoi(token1) == 0) || (atoi(token1) == 1)) {
 		    						// Checks if there is more than one operand
 		    						if(!(linePos = GetToken(line, token1, linePos))) {
 		    							// Skips line if operand is a zero
@@ -224,7 +224,7 @@ int main() {
 		    						}
 		    					}
 		    					else {
-		    						// Operand of IF was not a number or a label in EQU table
+		    						// Operand of IF was not 0/1 or a label in EQU table
 		    						printf("Line %d. Error: Undefined operand in IF directive.\n", linec);
 		    						error_count++;
 		    					}

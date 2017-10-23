@@ -265,8 +265,14 @@ int IsHex(char *token) {
 
 	int i;
 
-	if((token[0] == '0') && (token[1] == 'X')) {
+	if ((token[0] == '0') && (token[1] == 'X')) {
 		for(i = 2; i<strlen(token); i++) {
+			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
+		}
+		return 1;
+	}
+	else if ((token[0] == '-') && (token[1] == '0') && (token[2] == 'X')) {
+		for(i = 3; i<strlen(token); i++) {
 			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
 		}
 		return 1;
