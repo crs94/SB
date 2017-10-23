@@ -133,10 +133,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 /********************************** MAIN ********************************/
 
 int main(int argc, char *argv[]) {
-	
+
 	// Error message displayed if wrong arguments are passed to the program
 	char usage[] = "\n\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
-	
+
 	char *input_file = argv[2];				// Name of input file
 	char *output_file = argv[3];			// Name of output file
 	char pass_pre_out[TOKEN_LENGTH];		// Name of output file from preprocessing step
@@ -145,8 +145,8 @@ int main(int argc, char *argv[]) {
 	FILE *fp_in = NULL;						// Pointer to input files
 	FILE *fp_out = NULL;					// Pointer to output files
 	struct fileLines *line_table = NULL;	// Pointer to beginning of lines table
-	
-	
+
+
 	if(argc != 4) {
 		printf("%s\n",usage);
 		return 1;
@@ -155,22 +155,22 @@ int main(int argc, char *argv[]) {
     if ((fp_in = fopen(input_file, "r")) == NULL) {
 		printf("Input file not found.\n");
 		return 1;
-	} 
+	}
 
     if(!strcmp(argv[1], "-p")) {
-    
+
     	if ((fp_out = fopen(output_file, "w")) == NULL) {
 			printf("Could not open output file.\n");
 			return 1;
 		}
-		
+
     	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
     		printf("Preprocessing step returned errors\n");
     	}
-    	
+
     	fclose(fp_in);
     	fclose(fp_out);
-    	
+
     	return errors;
     }
     else {
@@ -178,24 +178,24 @@ int main(int argc, char *argv[]) {
 
 			strcpy(pass_pre_out, output_file);
 			strcat(pass_pre_out, ".pre");
-			
+
 			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 				printf("Could not open intermediate file 1.\n");
 				return 1;
 			}
-			
+
 			if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
     			printf("Preprocessing step returned errors\n");
     		}
-			
+
 			fclose(fp_in);
     		fclose(fp_out);
-    		
+
     		if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 				printf("Could not open intermediate file 2.\n");
 				return 1;
 			}
-			
+
 			if ((fp_out = fopen(output_file, "w")) == NULL) {
 				printf("Could not open output file.\n");
 				return 1;
@@ -204,70 +204,70 @@ int main(int argc, char *argv[]) {
 			if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
     			printf("Pass zero returned errors\n");
     		}
-			
+
 			fclose(fp_in);
 			fclose(fp_out);
 			//remove(pass_pre_out);
-			
+
 			return errors;
 		}
 		else {
 			if (!strcmp(argv[1], "-o")) {
-			
+
 				strcpy(pass_pre_out, output_file);
 				strcat(pass_pre_out, ".pre");
-			
+
 				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 					printf("Could not open intermediate file 1.\n");
 					return 1;
 				}
-			
+
 				if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
     				printf("Preprocessing step returned errors\n");
     			}
-			
+
 				fclose(fp_in);
 				fclose(fp_out);
-				
+
 				if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 					printf("Could not open intermediate file 2.\n");
 					return 1;
 				}
-				
+
 				strcpy(pass_zero_out, output_file);
 				strcat(pass_zero_out, ".mcr");
-			
+
 				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
 					printf("Could not open intermediate file 3.\n");
 					return 1;
 				}
-				
+
 				if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
     				printf("Pass zero returned errors\n");
-    			}	
-			
+    			}
+
 				fclose(fp_in);
 				fclose(fp_out);
-				
+
 				if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
 					printf("Could not open intermediate file 4.\n");
 					return 1;
 				}
-				
+
 				if ((fp_out = fopen(output_file, "w")) == NULL) {
 					printf("Could not open output file.\n");
 					return 1;
 				}
-				
+
 				if(One_Pass(fp_in, fp_out, &line_table, &errors)) {
 					printf("Pass one returned errors\n");
 				}
-			
+
 				fclose(fp_in);
 				fclose(fp_out);
 				//remove(pass_pre_out);
 				//remove(pass_zero_out);
-			
+
 				return errors;
 			}
 			else {
@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
 /***************************** PREPROCESS *********************************/
 
 int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
-	
+
 	char line[LINE_LENGTH];					//
 	char lineOut[LINE_LENGTH];				//
 	char token1[TOKEN_LENGTH];				//
@@ -299,13 +299,13 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     //line[0] = '\0';
 
     while(GetLine(fin, line)) {
-    
+
     	// Increments line counter
-    	linec++; 
-    	
+    	linec++;
+
     	// Adds line in line reference table
-    	addLines(linesTable_Head, linec, linec);	
-    	
+    	addLines(linesTable_Head, linec, linec);
+
 	    lineOut[0] = '\0';
 	    linePos = 0;
 
@@ -526,11 +526,11 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 						strcat(lineOut, token1);
 						strcat(lineOut, " ");
 				   	}
-				   	
+
 				   	lineOut[strlen(lineOut) - 1] = '\n';
 
 		    		fprintf(fout, "%s", lineOut);
-		    		
+
 		    		linem++;
 		    		modifyLines(*linesTable_Head, linec, linem);
 	    		}
@@ -550,7 +550,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     * table will not be used anymore and can be deleted
     */
     DeleteEQU(equTable_Head);
-    
+
     //printf("End of Preprocess.\n\n");
 
     return (*error_count);
@@ -566,6 +566,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 	char token2[TOKEN_LENGTH];			//
 	int linec = 0; 						// Counts the line
     int linem = 0; 						// Counts the lines that will be on the output file
+    int lineo = 0;                      // Stores the number of the line in the original file
 	int linePos = 0;					//
 	int sec = -1;						//
 	int inMacro = 0;					//
@@ -580,11 +581,11 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
     while (GetLine(fin, line)) {
         linec++; // Increments line counter
 		linesTmp = searchLines(*linesTable_Head, linec);
-		if(linesTmp != NULL) linec = linesTmp->lineNum;
+		if(linesTmp != NULL) lineo = linesTmp->lineNum;
         printf("%s", line);
         linePos = 0;
         lineOut[0] = '\0';
-		
+
         /*
         * If line has MACRO directive
         */
@@ -597,7 +598,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 		                	if(!strcmp(token2, "MACRO")) {
 		                		if(sec != 1) {
 									printf("Pass Zero: ");
-									printf("Line %d. Warning: MACRO directive outside TEXT section.\n", linec);
+									printf("Line %d. Warning: MACRO directive outside TEXT section.\n", lineo);
 								}
 			                	inMacro++;
 			                    firstMacro = 1;
@@ -605,19 +606,19 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 			                    modifyLines(*linesTable_Head, linec, 0);
 			                }
 			                else {
-			                	printf("Pass zero. Line %d. Sintatic error: Unexpected token %s\n", linec, token2);
+			                	printf("Pass zero. Line %d. Sintatic error: Unexpected token %s\n", lineo, token2);
                     			(*error_count)++;
 			                }
 		                }
                     }
                     else {
-                    	printf("Pass zero. Line %d. Sintatic error: invalid label.\n", linec);
+                    	printf("Pass zero. Line %d. Sintatic error: invalid label.\n", lineo);
                     	(*error_count)++;
                     }
                 }
             }
             else {
-            	printf("Pass Zero. Line %d. Error: Nested MACRO.\n", linec);
+            	printf("Pass Zero. Line %d. Error: Nested MACRO.\n", lineo);
             	(*error_count)++;
             }
         }
@@ -628,13 +629,13 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         else if ((!strcmp(line, "END\n")) || (!strcmp(line, " END\n"))) {
             // Checks whether END happens within a MACRO
 		    if (inMacro) {
-		        tmpMDT = addMDT(&mdtTable_Head, line, linec);
+		        tmpMDT = addMDT(&mdtTable_Head, line, lineo);
 		        inMacro = 0;
 		        modifyLines(*linesTable_Head, linec, 0);
 		    }
 		    else {
 		        linesTmp = searchLines(*linesTable_Head, linec);
-		        printf("Pass zero. Line %d. Semantic error: END without MACRO.\n", linec);
+		        printf("Pass zero. Line %d. Semantic error: END without MACRO.\n", lineo);
 		        (*error_count)++;
 		    }
         }
@@ -645,7 +646,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         else {
             // If line is the first line in MACRO definition
             if ((inMacro) && (firstMacro)) {
-                tmpMDT = addMDT(&mdtTable_Head, line, linec);
+                tmpMDT = addMDT(&mdtTable_Head, line, lineo);
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
@@ -654,18 +655,18 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
             // Else, if line is still in MACRO, but it's not longer the first
             else if ((inMacro) && (!firstMacro)) {
-                tmpMDT = addMDT(&mdtTable_Head, line, linec);
+                tmpMDT = addMDT(&mdtTable_Head, line, lineo);
                 modifyLines(*linesTable_Head, linec, 0);
             }
 
             // Else, line is not inside of MACRO definition
             else {
                 while((linePos = GetToken(line, token1, linePos))) {
-                
+
                     tmpMDT = searchMNT(mntTable_Head, token1);
 
                     // If token1 is found on the MDT, found a MACRO
-                    
+
                     if(tmpMDT != NULL) {
                         while (((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END ")) && (tmpMDT != NULL))) {
                             fprintf(fout, "%s\n", tmpMDT->line);
@@ -693,7 +694,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 						strcat(lineOut, " ");
                     }
                 }
-                
+
                 lineOut[strlen(lineOut) - 1] = '\n';
     			fprintf(fout, "%s", lineOut);
                 linem++;
@@ -730,6 +731,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	int offset = 0;										//
 	int lc[3] = {0, 0, 0};								//
 	int line_count = 0;									//
+	int line_original = 0;                              //
 	int label_count = 0;								//
 	int opr_count = 0;									//
 	int dir = -1;										//
@@ -740,9 +742,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	struct sym_table_node *tmp_sym = NULL;				//
 	struct fileLines *tmp_line = NULL;					//
 	struct op_table_node *tmp_op = NULL;				//
-	
+
 	// Operation Table
-	struct op_table_node opTable[] = {	"ADD", 1, 1,	
+	struct op_table_node opTable[] = {	"ADD", 1, 1,
 										"SUB", 2, 1,
 										"MULT", 3, 1,
 										"DIV", 4, 1,
@@ -755,15 +757,15 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										"STORE", 11, 1,
 										"INPUT", 12, 1,
 										"OUTPUT", 13, 1,
-										"STOP", 14, 0 
+										"STOP", 14, 0
 										};
-    
+
     while(GetLine(fin, line)) {
-    
+
     	printf("In first while\n");
     	line_count++;
     	tmp_line = searchLines(*linesTable_Head, line_count);
-    	line_count = tmp_line->lineNum;
+    	line_original = tmp_line->lineNum;
     	label_count = 0;
     	linePos = 0;
     	dir = -1;
@@ -771,9 +773,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	lineOut->opcode = -1;
     	lineOut->op[0] = -1;
     	lineOut->op[1] = -1; //this will be tested before writing to file
-    	lineOut->line = line_count;
+    	lineOut->line = line_original;
     	lineOut->next = NULL;
-    	
+
     	while(GetToken2(line, token1, &linePos)) {
     		printf("In second while\n");
 			if(token1[strlen(token1) - 1] == ':') {
@@ -788,7 +790,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 						}
 						else {
 							if(tmp_sym->defined) {
-								printf("Line %d. Semantic error: Label redefinition\n", line_count);
+								printf("Line %d. Semantic error: Label redefinition\n", line_original);
 								(*error_count)++;
 							}
 							else { //Encontrou definição de uma label referenciada anteriormente.
@@ -796,19 +798,19 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								tmp_sym->defined = 1;
 								tmp_sym->address = lc[sec];
 								tmp_sym->sec = sec;
-								//replace = tmp_sym; 
+								//replace = tmp_sym;
 								//Can't replace yet because of vector length. will replace after the line is processed.
 							}
 						}
 						label_count++;
 					}
 					else {
-						printf("Line %d. Sintatic error: More than one label in the same line\n", line_count);
+						printf("Line %d. Sintatic error: More than one label in the same line\n", line_original);
 						(*error_count)++;
 					}
 				}
 				else {
-					printf("Line %d. Lexical error: Invalid label %s\n", line_count, token1);
+					printf("Line %d. Lexical error: Invalid label %s\n", line_original, token1);
 					(*error_count)++;
 				}
     		}
@@ -819,24 +821,24 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 					if(tmp_op != NULL) { //found an operation
 						printf("Found operation in line %d\n", line_count);
 						if(sec == 2) {
-							printf("Line %d. Semantic error: Operation inside DATA section\n", line_count);
+							printf("Line %d. Semantic error: Operation inside DATA section\n", line_original);
 							(*error_count)++;
 						}
 						else {
 							if(!sec) {
-								printf("Line %d. Semantic error: Operation outside TEXT section\n", line_count);
+								printf("Line %d. Semantic error: Operation outside TEXT section\n", line_original);
 								(*error_count)++;
 							}
 						}
-						
+
 						lc[1]+=(tmp_op->operands+1);
 						lineOut->opcode = tmp_op->opcode;
 						opr_count = 0;
-						
+
 						// Gets operands and any other tokens in the line
 						while(GetToken2(line, token1, &linePos)) {
 							printf("In third while\n");
-							if(IsValid(token1) || 
+							if(IsValid(token1) ||
 							// I think this won't work when firt operand of COPY has offset
 							((opr_count == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
 								if(token1[strlen(token1)-1] == ',') {
@@ -852,7 +854,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										else {
 											lineOut->op[opr_count] = -1;
 											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
-											tmp_sym = symTable; //used in next else	
+											tmp_sym = symTable; //used in next else
 											printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 										}
 									}
@@ -868,7 +870,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									}
 								}
 								else {
-									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_count, tmp_op->name);
+									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_original, tmp_op->name);
 									(*error_count)++;
 								}
 								opr_count++; //em que ponto(s) incrementar?
@@ -882,13 +884,13 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 												printf("offset is a number\n");
 												offset = atoi(token1);
 												//previous operand is defined in symTable
-												if((tmp_sym->defined) && (tmp_sym->sec == 1)) { 
+												if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
 													printf("offset to previously defined label\n");
 													if((offset < (tmp_sym->vector))) {
 														lineOut->op[opr_count-1] += offset;
 													}
 													else {
-														printf("Line %d. Semantic error: offset %s too large\n", line_count, token1);
+														printf("Line %d. Semantic error: offset %s too large\n", line_original, token1);
 														(*error_count)++;
 													}
 												}
@@ -898,31 +900,31 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 												}
 											}
 											else {
-												printf("Line %d. Semantic error: invalid offset %s\n", line_count, token1);
+												printf("Line %d. Semantic error: invalid offset %s\n", line_original, token1);
 												(*error_count)++;
 											}
 										}
 										else {
-											printf("Line %d. Sintatic error: Expected offset after \"+\"\n", line_count);
+											printf("Line %d. Sintatic error: Expected offset after \"+\"\n", line_original);
 											(*error_count)++;
 										}
 									}
 									else {
-										printf("Line %d. Sintatic error: \"+\" without previous operand\n", line_count);
+										printf("Line %d. Sintatic error: \"+\" without previous operand\n", line_original);
 										(*error_count)++;
 									}
 									tmp_sym = NULL; //so if next token is invalid doesn't enter here.
 								}
 								else {
-									printf("Line %d. Sintatic error: Invalid operand %s.\n", line_count, token1);
+									printf("Line %d. Sintatic error: Invalid operand %s.\n", line_original, token1);
 									(*error_count)++;
 								}
 							}
 						}
 						if(opr_count < tmp_op->operands) {
-							printf("Line %d. Sintatic error: missing operands in %s\n", line_count, tmp_op->name);
+							printf("Line %d. Sintatic error: missing operands in %s\n", line_original, tmp_op->name);
 							(*error_count)++;
-						}						
+						}
 					}
 					else {
 						for(i = 0; i < 3; i++) {
@@ -931,15 +933,15 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 							}
 						}
 						if(dir > -1) {
-							printf("Found directive %s in line %d\n", token1, line_count);
+							printf("Found directive %s in line %d\n", token1, line_original);
 							if(dir != 2) {
 								if(sec == 1) {
-									printf("Line %d. Semantic error: Directive inside TEXT section\n", line_count);
+									printf("Line %d. Semantic error: Directive inside TEXT section\n", line_original);
 									(*error_count)++;
 								}
 								else {
 									if(!sec) {
-										printf("Line %d. Semantic error: Directive outside of DATA section\n", line_count);
+										printf("Line %d. Semantic error: Directive outside of DATA section\n", line_original);
 										(*error_count)++;
 									}
 								}
@@ -960,14 +962,14 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 												lineOut->op[0] = offset;
 											}
 											else {
-												printf("Line %d. Sintatic error: Expected a number after SPACE\n", line_count);
+												printf("Line %d. Sintatic error: Expected a number after SPACE\n", line_original);
 												(*error_count)++;
 											}
 										}
 										i++;
 									}
 									if(i > 1) {
-										printf("Line %d. Sintatic error: Too many operands in SPACE\n", line_count);
+										printf("Line %d. Sintatic error: Too many operands in SPACE\n", line_original);
 										(*error_count)++;
 									}
 									else {
@@ -980,9 +982,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									}
 								}
 								else {
-									printf("Line %d. Sintatic error: Expected one label before directive SPACE\n", line_count);
+									printf("Line %d. Sintatic error: Expected one label before directive SPACE\n", line_original);
 									(*error_count)++;
-								} 
+								}
 							}
 							else {
 								if(dir == 1) { // CONST
@@ -1006,7 +1008,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 														lineOut->op[0] = offset;
 													}
 													else {
-														printf("Line %d. Sintatic error: Expected a number after CONST\n", line_count);
+														printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 														(*error_count)++;
 													}
 												}
@@ -1014,63 +1016,63 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 											i++;
 										}
 										if(i == 0) {
-											printf("Line %d. Sintatic error: Expected a number after CONST\n", line_count);
+											printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 											(*error_count)++;
 										}
 										else {
 											if(i > 1) {
-												printf("Line %d. Sintatic error: Too many operands in CONST\n", line_count);
+												printf("Line %d. Sintatic error: Too many operands in CONST\n", line_original);
 												(*error_count)++;
 											}
 										}
 									}
 									else {
-										printf("Line %d. Sintatic error: Expected one label before directive CONST\n", line_count);
+										printf("Line %d. Sintatic error: Expected one label before directive CONST\n", line_original);
 										(*error_count)++;
 									}
 								}
 								else {
 									if(dir == 2) {
 										if(label_count > 0) {
-											printf("Line %d. Sintatic error: Label before SECTION\n", line_count);
+											printf("Line %d. Sintatic error: Label before SECTION\n", line_original);
 											(*error_count)++;
 										}
-										else {	
+										else {
 											i = 0;
 											while(GetToken2(line, token1, &linePos)) {
 												if(i == 0) {
 													if(IsValid(token1)) { //checks if token is a number
 														if(!strcmp(token1, "TEXT")) {
-															if(sec != 1) {	
+															if(sec != 1) {
 																sec = 1;
 																printf("Found TEXT Section.\n");
 															}
 															else {
-																printf("Line %d. Semantic error: More than one TEXT section\n", line_count);
+																printf("Line %d. Semantic error: More than one TEXT section\n", line_original);
 																(*error_count)++;
 																//O que fazer com o resto da seção?
 															}
 														}
 														else {
 															if(!strcmp(token1, "DATA")) {
-																if(sec != 2) {	
+																if(sec != 2) {
 																	sec = 2;
 																	printf("Found DATA Section.\n");
 																}
 																else {
-																	printf("Line %d. Semantic error: More than one DATA section\n", line_count);
+																	printf("Line %d. Semantic error: More than one DATA section\n", line_original);
 																	(*error_count)++;
 																	//O que fazer com o resto da seção?
 																}
 															}
 															else {
-																printf("Line %d. Sintatic error: Invalid operand in diretive SECTION\n",line_count);
+																printf("Line %d. Sintatic error: Invalid operand in diretive SECTION\n",line_original);
 																(*error_count)++;
-															}	
+															}
 														}
 													}
 													else {
-														printf("Line %d. Lexical error: Invalido token\n", line_count);
+														printf("Line %d. Lexical error: Invalido token\n", line_original);
 														(*error_count)++;
 													}
 												}
@@ -1078,19 +1080,19 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 												i++;
 											}
 											if(i == 0) {
-												printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_count);
+												printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
 												(*error_count)++;
 											}
 											else {
 												if(i > 1) {
-													printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_count);
+													printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
 													(*error_count)++;
 												}
 											}
-										} 
+										}
 									}
 									else { //primeiro token após label(se houver) não é instrução ou diretiva
-										printf("Line %d. Sintatic error: Token %s. Expected instruction or directive\n", line_count, token1);
+										printf("Line %d. Sintatic error: Token %s. Expected instruction or directive\n", line_original, token1);
 										(*error_count)++;
 									}
 								}
@@ -1099,12 +1101,12 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 					}
 				}
 				else {
-					printf("Line %d. Lexical error: Invalid token %s\n", line_count, token1);
+					printf("Line %d. Lexical error: Invalid token %s\n", line_original, token1);
 					(*error_count)++;
 				}
-    		}	
+    		}
     	}
-    	
+
     	if(lineOut->opcode != -1) {
     		printf("Adding line to output\n");
     		if(sec == 2) {
@@ -1121,7 +1123,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 		else {
 			free(lineOut);
 		}
-    	
+
     	/*if(replace != NULL) {
     		printf("Replacing list\n");
     		ReplaceList(replace);
@@ -1144,7 +1146,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     printf("Deleting symbol table\n");
     DeleteSymTable(symTable);
     printf("FINISHED!\n");
-    
+
     return (*error_count);
 }
 
@@ -1337,7 +1339,7 @@ void ReplaceLists(struct sym_table_node *node) {
 
 	struct replace_list_node *tmp = NULL;
 	struct sym_table_node *temp = node;
-	
+
 	while(temp != NULL) {
 		tmp = temp->list;
 		printf("Replacing references for %s\n", temp->label);
@@ -1346,9 +1348,9 @@ void ReplaceLists(struct sym_table_node *node) {
 			printf("Replacing %d with %d\n",*tmp->replace, (temp->address + tmp->offset));
 			(*tmp->replace) = (temp->address + tmp->offset);
 			printf("Replaced\n");
-		    tmp = tmp->next; 
+		    tmp = tmp->next;
 		}
-		
+
 		printf("Deleting list of replaces in node %s\n", temp->label);
 		while(temp->list != NULL) {
 			tmp = temp->list;
@@ -1368,7 +1370,7 @@ void ReplaceLists(struct sym_table_node *node) {
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
 
 	struct sym_table_node *tmp = table;
-	
+
     while ((tmp != NULL)) {
     	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
@@ -1393,7 +1395,7 @@ void AddSym(struct sym_table_node **table, char *name, int address, int defined,
 	*table = new;
 }
 
-// Deletes Symbol Table 
+// Deletes Symbol Table
 void DeleteSymTable(struct sym_table_node *table) {
 	struct sym_table_node* tmp;
     while(table != NULL) {
@@ -1459,11 +1461,11 @@ void AdjustAdresses(struct sym_table_node *table, int lc_text) {
 void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText, int *error) {
 
 	printf("Checking errors\n");
-	struct sym_table_node *tmp = symtab;			
-	struct output_line *temp = text;	
-	struct output_line *temp2 = data;	
+	struct sym_table_node *tmp = symtab;
+	struct output_line *temp = text;
+	struct output_line *temp2 = data;
 	int i = (secText + 1);				// First address of data section
-	
+
 	while(tmp != NULL) {
 		if(tmp->defined == 0) {
 			printf("Semantic error: Undefined label %s\n", tmp->label);
@@ -1471,7 +1473,7 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 		}
 		tmp = tmp->next;
 	}
-	
+
 	while(temp != NULL) {
 
 		printf("Checking condition 1\n");
@@ -1482,15 +1484,15 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 			}
 		}
 		else {
-		
+
 			printf("Checking condition 2\n");
-			if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) || 
+			if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) ||
 				((temp->op[1] > -1) && (temp->op[1] < i))) {
-				
+
 				printf("Linha %d. Erro: Instrução referencia seção inválida\n", temp->line);
 				(*error)++;
 			}
-			
+
 			printf("Checking condition 6\n");
 			if(temp->opcode == 9) {
 				while((i < temp->op[1]) && (temp2 != NULL)) {
@@ -1550,7 +1552,7 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 				}
 			}
 		}
-		
+
 		temp = temp->next;
 	}
 }
@@ -1559,7 +1561,7 @@ void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_lin
 
 	int n;
 	struct output_line *tmp = first_text;
-	
+
 	while(tmp != NULL) {
     	if(tmp->opcode > -1) {
     		if(tmp->opcode == 14) {
@@ -1575,9 +1577,9 @@ void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_lin
     	}
     	tmp = tmp->next;
     }
-    
+
     tmp = first_data;
-    
+
     while(tmp != NULL) {
     	if(tmp->opcode == 0) { //CONST
     			fprintf(fp, "%d\n", tmp->op[0]);
@@ -1728,7 +1730,7 @@ int IsLabel(char *token) {
 			}
 		}
 	}
-	
+
 	if(!strcmp(token, "EQU:")) {
 		return 0;
 	}
