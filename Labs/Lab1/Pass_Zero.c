@@ -190,10 +190,13 @@ int main() {
     deleteMNT(mntTable_Head);
 
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
-    	printf("\nFiles closed.");
+    	printf("\nEnd of Pass_Zero.\n");
+    }
+    else {
+        printf("\nFiles were not closed properly during Pass_Zero.\n");
     }
 
-    return 0;
+    return error_count;
 }
 
 /*

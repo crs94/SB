@@ -286,12 +286,14 @@ int main() {
     */
     DeleteEQU(equTable_Head);
 
-    while ((fclose(fp_in) != 0) || (fclose(fp_out) != 0)) { // What to do if error occurs?
-    	printf("\nClosing files... ");
+    if ((fclose(fp_in) == 0) || (fclose(fp_out) == 0)) { // What to do if error occurs?
+    	printf("\nEnd of Preprocess.\n");
     }
-    printf("End of Preprocess.\n\n");
+    else {
+    	printf("\nFiles were not closed properly during Preprocess.\n");
+    }
 
-    return 0;
+    return error_count;
 }
 
 /*
