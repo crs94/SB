@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 //#include "utils.h"
 
 #define LINE_LENGTH 560
@@ -329,8 +330,14 @@ int IsHex(char *token) {
 
 	int i;
 
-	if((token[0] == '0') && (token[1] == 'X')) {
+	if ((token[0] == '0') && (token[1] == 'X')) {
 		for(i = 2; i<strlen(token); i++) {
+			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
+		}
+		return 1;
+	}
+	else if ((token[0] == '-') && (token[1] == '0') && (token[2] == 'X')) {
+		for(i = 3; i<strlen(token); i++) {
 			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
 		}
 		return 1;
@@ -345,19 +352,24 @@ int IsHex(char *token) {
  */
 int HexToInt(char *token) {
 
-	//int i = strlen(token);
-	//int j = 0;
-	int num = 0;
+	int i = strlen(token) - 1;
+	int j = 0;
+	int digit = 0;
+	int sum = 0;
+	char aux = token[i];
 
-	/*while(i > 0) {
-		sum+=(token[i]*(pow(16, j)));
+	while ((i > 0) && (aux != 'X')) {
+		if ((aux > 47) && (aux < 58)) digit = aux - 48;
+		else if ((aux > 64) && (aux < 71)) digit = aux - 55;
+		sum+=(digit*(pow(16, j)));
 		i--;
 		j++;
-	}*/
-	sscanf(token, "%x", num);
-	sprintf(token, "%d", num);
+		aux = token[i];
+	}
 
-	return num;
+	if (token[0] == '-') sum *= -1;
+
+	return sum;
 }
 
 

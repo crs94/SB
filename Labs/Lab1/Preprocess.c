@@ -328,6 +328,14 @@ int main(int argc, char *argv[]) {
     
     //printf("End of Preprocess.\n\n");
 
+
+    if ((fclose(fp_in) == 0) || (fclose(fp_out) == 0)) { // What to do if error occurs?
+    	printf("\nEnd of Preprocess.\n");
+    }
+    else {
+    	printf("\nFiles were not closed properly during Preprocess.\n");
+    }
+
     return error_count;
 }
 

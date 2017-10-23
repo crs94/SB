@@ -102,8 +102,6 @@ int main() {
 
     while ((GetLine(fp_in, line)) || (strlen(line) > 0)){
         linec++; // Increments line counter
-
-        printf("%s", line);
         linePos = 0;
 
         /*
@@ -111,20 +109,14 @@ int main() {
         */
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
             // Checks whether code has a MACRO within another MACRO
-            if (!inMacro) {
-                inMacro++;
-                if (linePos = GetToken(line, token1, linePos)) {
-                    if (IsLabel(token1)) {
-                        firstMacro = 1;
-                        addMNT(&mntTable_Head, token1);
-                    }
+            inMacro = 1;
+            if (linePos = GetToken(line, token1, linePos)) {
+                if (IsLabel(token1)) {
+                    firstMacro = 1;
+                    addMNT(&mntTable_Head, token1);
                 }
-                modifyLines(linesTable_Head, linec, 0);
             }
-            else {
-            	printf("Line %d. Error: Nested MACRO.\n", linec);
-            	error_count++;
-            }
+            modifyLines(linesTable_Head, linec, 0);
         }
 
         /*
@@ -133,7 +125,7 @@ int main() {
         else if (!strcmp(line, "END\n")) {
             // To be correctly defined, the line must contain only END
             tmpMDT = addMDT(&mdtTable_Head, line, linec);
-            inMacro--;
+            inMacro = 0;
             modifyLines(linesTable_Head, linec, 0);
         }
 
@@ -147,7 +139,7 @@ int main() {
                 mntTable_Head->begin = tmpMDT;
                 tmpMDT = NULL;
                 firstMacro = 0;
-                modify(linesTable_Head, linec, 0);
+                modifyLines(linesTable_Head, linec, 0);
             }
 
             // Else, if line is still in MACRO, but it's not longer the first
@@ -163,11 +155,20 @@ int main() {
 
                     // If token1 is found on the MDT, found a MACRO
                     if (tmpMDT != NULL) {
-                        while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
-                            fprintf(fp_out, "%s\n", tmpMDT->line);
-                            linem = insertLines(linesTable_Head, tmpMDT->lineNum, linem);
-                            linec = linem;
-                            tmpMDT = tmpMDT->next;
+                        // Checks if there is something else in the line
+                        linePos = GetToken(line, token2, linePos);
+                        if (linePos == 0) {
+                            while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
+                                fprintf(fp_out, "%s\n", tmpMDT->line);
+                                linem = insertLines(linesTable_Head, tmpMDT->lineNum, linem);
+                                linec = linem;
+                                tmpMDT = tmpMDT->next;
+                            }
+                        }
+                        else {
+                            linesTmp = searchLines(linesTable_Head, linec);
+                            printf("Linha %d. Erro: Tipo de argumento invalido. %s\n", linesTmp->lineMod, token2);
+                            error_count++;
                         }
                     }
 
@@ -192,10 +193,13 @@ int main() {
     deleteMNT(mntTable_Head);
 
     if ((fclose(fp_in) == 0) && (fclose(fp_out) == 0)) {
-    	printf("\nFiles closed.");
+    	printf("\nEnd of Pass_Zero.\n");
+    }
+    else {
+        printf("\nFiles were not closed properly during Pass_Zero.\n");
     }
 
-    return 0;
+    return error_count;
 }
 
 /*
