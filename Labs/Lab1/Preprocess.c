@@ -67,8 +67,6 @@ int main() {
 	int linec = 0; // Counts the line
 	int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
-	int secText = 0;
-	int secData = 0;
 	int endFile = 0;
 	int i = 0;
 	int error_count = 0; // Function will return this
