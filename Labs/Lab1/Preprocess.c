@@ -10,9 +10,6 @@
 *			an IF directive only if its operand is 1.
 *
 *
-* FILE REFERENCES:
-*
-*
 * EXTERNAL VARIABLES:
 *
 * Name				Type		IO		Description
@@ -74,6 +71,7 @@ int main() {
 	int secData = 0;
 	int endFile = 0;
 	int i = 0;
+	int error_count = 0; // Function will return this
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
 	struct equ_tab *equTable_Head = NULL;
@@ -136,9 +134,10 @@ int main() {
 	    		if(linePos = GetToken(line, token1, linePos)) {
 		    		// Checks if first token is a valid label
 		    		if(IsLabel(token1)) {
-                        // Checks is label is either EQU or IF
+                        // Checks if label is either EQU or IF
                         if ((!strcmp(token1, "EQU:")) || (!strcmp(token1, "IF:"))) {
                             printf("Line %d. Error: Invalid label name %s.\n", linec, token1);
+                            error_count++;
                         }
                         else {
                             // Checks if there is another token in the line
@@ -172,20 +171,24 @@ int main() {
                                         }
                                         else {
                                             printf("Line %d. Error: Invalid token %s.\n", linec, token2);
+                                            error_count++;
                                         }
                                     }
                                     else {
                                         printf("Line %d. Error: Expected operand after EQU.\n", linec);
+                                        error_count++;
                                     }
                                 }
                                 else {
                                     printf("Line %d. Error: Unexpected token %s after label.", linec, token2);
+                                    error_count++;
                                 }
                             }
                         }
 					}
 		    		else {
 		    			printf("Line %d. Error: Invalid label %s.\n", linec, token1);
+		    			error_count++;
 		    		}
 		    	}
 		    }
@@ -217,19 +220,23 @@ int main() {
 		    						}
 		    						else {
 		    							printf("Line %d. Error: Incorrect number of operands in IF directive.\n", linec);
+		    							error_count++;
 		    						}
 		    					}
 		    					else {
 		    						// Operand of IF was not a number or a label in EQU table
 		    						printf("Line %d. Error: Undefined operand in IF directive.\n", linec);
+		    						error_count++;
 		    					}
 		    				}
 		    				else {
 		    					printf("Line %d. Error: Expected operand after IF directive.\n", linec);
+		    					error_count++;
 		    				}
 		    			}
 		    			else {
 		    				printf("Line %d. Error: Unexpected label.", linec);
+		    				error_count++;
 		    			}
 		    		}
 		    	}
@@ -251,7 +258,9 @@ int main() {
 	    				strcat(lineOut, " ");
 				   	}
 				   	lineOut[strlen(lineOut) - 1] = '\n';
-		    		fprintf(fp_out, "%s", lineOut);
+				   	if(!error_count) {
+		    			fprintf(fp_out, "%s", lineOut);
+		    		}
 		    		linem++;
 		    		modifyLines(linesTable_Head, linec, linem);
 	    		}

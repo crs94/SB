@@ -5,10 +5,6 @@
 *
 * PURPOSE:
 *
-*
-* FILE REFERENCES:
-*
-*
 * EXTERNAL VARIABLES:
 *
 * Name				Type		IO		Description
@@ -110,7 +106,7 @@ int main() {
 	struct output_line *lineOut = NULL; //linha atual
 	struct sym_table_node *symTable = NULL;
 	struct sym_table_node *tmp_sym = NULL;
-	struct sym_table_node *replace = NULL;
+	//struct sym_table_node *replace = NULL;
 	struct op_table_node *tmp_op = NULL;
 	struct op_table_node opTable[] = {	"ADD", 1, 1,
 										"SUB", 2, 1,

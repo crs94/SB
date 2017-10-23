@@ -80,6 +80,7 @@ int main() {
 	int i = 0;
 	int inMacro = 0;
 	int firstMacro = 0;
+	int error_count = 0;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
 	struct MDT *mdtTable_Head = NULL;
@@ -120,7 +121,10 @@ int main() {
                 }
                 modifyLines(linesTable_Head, linec, 0);
             }
-            else printf("Line %d. Error: Nested MACRO.\n", linec);
+            else {
+            	printf("Line %d. Error: Nested MACRO.\n", linec);
+            	error_count++;
+            }
         }
 
         /*
