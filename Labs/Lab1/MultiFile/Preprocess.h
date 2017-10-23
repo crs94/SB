@@ -1,6 +1,6 @@
 
-#ifndef _PREPROCESS_H_
-#define _PREPROCESS_H_
+//#ifndef _PREPROCESS_H_
+//#define _PREPROCESS_H_
 
 extern struct fileLines {
     int lineNum;
@@ -14,4 +14,4 @@ void AddEQU(struct equ_tab **table, char *label, char *digit);
 
 void DeleteEQU(struct equ_tab *table); 
 
-#endif
+//#endif

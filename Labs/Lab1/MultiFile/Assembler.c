@@ -38,9 +38,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-//#include "Preprocess.h"
-//#include "Pass_Zero.h"
-//#include "One_Pass.h"
+#include "Preprocess.h"
+#include "Pass_Zero.h"
+#include "One_Pass.h"
 
 struct fileLines {
     int lineNum;
@@ -50,12 +50,12 @@ struct fileLines {
 
 int main(int argc, char *argv[]) {
 	
-	char usage[] = "Usage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
+	char usage[] = "\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
 	
-	char input_file[] = argv[2];
-	char output_file[] = argv[3];
-	char *pass_pre_out;
-	char *pass_zero_out;
+	char *input_file = argv[2];
+	char *output_file = argv[3];
+	char pass_pre_out[101];
+	char pass_zero_out[101];
 	int errors = 0;
 	FILE *fp_in = NULL;
 	FILE *fp_out = NULL;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     
     	if ((fp_out = fopen(output_file, "w")) == NULL) {
 			printf("Could not open output file.\n");
-			return 0;
+			return 1;
 		}
 		
     	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
@@ -91,94 +91,104 @@ int main(int argc, char *argv[]) {
     }
     else {
 		if(!strcmp(argv[1], "-m")) {
-		
-			strcat(pass_pre_out, output_file);
+
+			strcpy(pass_pre_out, output_file);
 			strcat(pass_pre_out, ".pre");
 			
 			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 				printf("Could not open intermediate file 1.\n");
-				return 0;
+				return 1;
 			}
 			
-			Preprocess(fp_in, pass_pre_out);
+			if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
+    			printf("Preprocessing step returned errors\n");
+    		}
 			
 			fclose(fp_in);
     		fclose(fp_out);
     		
     		if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 				printf("Could not open intermediate file 2.\n");
-				return 0;
+				return 1;
 			}
 			
 			if ((fp_out = fopen(output_file, "w")) == NULL) {
 				printf("Could not open output file.\n");
-				return 0;
+				return 1;
 			}
-    		
-			Pass_zero(fp_in, fp_out);
+
+			if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
+    			printf("Pass zero returned errors\n");
+    		}
 			
 			fclose(fp_in);
 			fclose(fp_out);
 			//remove(pass_pre_out);
 			
-			return 1;
+			return errors;
 		}
 		else {
 			if (!strcmp(argv[1], "-o")) {
 			
-				strcat(pass_pre_out, output_file);
+				strcpy(pass_pre_out, output_file);
 				strcat(pass_pre_out, ".pre");
 			
 				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
 					printf("Could not open intermediate file 1.\n");
-					return 0;
+					return 1;
 				}
 			
-				Preprocess(fp_in, pass_pre_out);
+				if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
+    				printf("Preprocessing step returned errors\n");
+    			}
 			
 				fclose(fp_in);
 				fclose(fp_out);
 				
 				if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
 					printf("Could not open intermediate file 2.\n");
-					return 0;
+					return 1;
 				}
 				
-				strcat(pass_zero_out, output_file);
+				strcpy(pass_zero_out, output_file);
 				strcat(pass_zero_out, ".mcr");
 			
 				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
 					printf("Could not open intermediate file 3.\n");
-					return 0;
+					return 1;
 				}
 				
-				Pass_zero(fp_in, fp_out);
+				if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
+    				printf("Pass zero returned errors\n");
+    			}	
 			
 				fclose(fp_in);
 				fclose(fp_out);
 				
 				if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
 					printf("Could not open intermediate file 4.\n");
-					return 0;
+					return 1;
 				}
 				
 				if ((fp_out = fopen(output_file, "w")) == NULL) {
 					printf("Could not open output file.\n");
-					return 0;
+					return 1;
 				}
 				
-				One_Pass(fp_in, fp_out);
+				if(One_Pass(fp_in, fp_out, &line_table, &errors)) {
+					printf("Pass one returned errors\n");
+				}
 			
 				fclose(fp_in);
 				fclose(fp_out);
 				//remove(pass_pre_out);
 				//remove(pass_zero_out);
 			
-				return 1;
+				return errors;
 			}
 			else {
 				printf("%s\n",usage);
-				return 0;
+				return 1;
 			}
 		}
 	}

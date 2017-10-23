@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-//#include "One_Pass.h"
+#include "One_Pass.h"
 
 struct op_table_node {					// Struct to store a node of the operations table
 	char *name;							// Name of the operation
@@ -64,21 +64,6 @@ struct output_line {					//
 	int line;							//
 	struct output_line *next;			//
 };
-
-// To be removed in final code
-struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
-void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section);
-void DeleteSymTable(struct sym_table_node *table);
-struct op_table_node *SearchOp(struct op_table_node *table, char *token);
-//int IsValidLabel(struct op_table_node table[], char *token);
-void AddReplace(struct replace_list_node **node, int *n);
-void ReplaceLists(struct sym_table_node *node);
-void AddLine(struct output_line *line, struct output_line **head);
-void DeleteOutputLines(struct output_line *first);
-void WriteObjectFile(FILE *fp, struct output_line *first_text, struct output_line *first_data);
-void AdjustAdresses(struct sym_table_node *table, int lc_text);
-void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText);
-
 
 int main() {
 

@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-//#include "Preprocess.h"
+#include "Preprocess.h"
 
 /*
  *This structure holds the symbol/label defined in an EQU directive
@@ -27,11 +27,6 @@ struct equ_tab {
 	char value[TOKEN_LENGTH];
 	struct equ_tab *next;
 };
-
-// This will be gone in final code. No need to comment
-struct equ_tab *SearchEQU(struct equ_tab *table, char *token);
-void AddEQU(struct equ_tab **table, char *label, char *digit);
-void DeleteEQU(struct equ_tab *table);
 
 //int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
 int main(int argc, char *argv[]) {

@@ -37,8 +37,6 @@ void DeleteSymTable(struct sym_table_node *table);
 
 struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 
-int IsValidLabel(struct op_table_node table[], char *token);
-
 void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceList(struct sym_table_node *node);
@@ -49,5 +47,8 @@ void DeleteOutputLines(struct output_line *first);
 
 void WriteObjectFile(FILE *fp, struct output_line *first);
 
+void AdjustAdresses(struct sym_table_node *table, int lc_text);
+
+void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText);
 
 //#endif

@@ -572,8 +572,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 	int linec = 0; // Counts the line
     int linem = 0; // Counts the lines that will be on the output file
 	int linePos = 0;
-	int secText = 0;
-	int secData = 0;
+	int sec = -1;
 	int i = 0;
 	int inMacro = 0;
 	int firstMacro = 0;
@@ -586,9 +585,11 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
     while ((GetLine(fin, line)) || (strlen(line) > 0)){
         linec++; // Increments line counter
-
+		linesTmp = searchLines(*linesTable_Head, linec);
+		linec = linesTmp->lineNum;
         printf("%s", line);
         linePos = 0;
+        lineOut[0] = '\0';
 
         /*
         * If line has MACRO directive
@@ -596,18 +597,33 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
             // Checks whether code has a MACRO within another MACRO
             if (!inMacro) {
-                inMacro++;
                 if (linePos = GetToken(line, token1, linePos)) {
                     if (IsLabel(token1)) {
-                        firstMacro = 1;
-                        addMNT(&mntTable_Head, token1);
+		                if(linePos = GetToken(line, token2, linePos)) {
+		                	if(!strcmp(token2, "MACRO")) {
+		                		if(sec != 1) {
+									printf("Pass Zero: ");
+									printf("Line %d. Warning: MACRO directive outside TEXT section.\n", linec);
+								}
+			                	inMacro++;
+			                    firstMacro = 1;
+			                    addMNT(&mntTable_Head, token1);
+			                    modifyLines(*linesTable_Head, linec, 0);
+			                }
+			                else {
+			                	printf("Pass zero. Line %d. Sintatic error: Unexpected token %s\n", linec, token2);
+                    			(*error_count)++;
+			                }
+		                }
+                    }
+                    else {
+                    	printf("Pass zero. Line %d. Sintatic error: invalid label.\n", linec);
+                    	(*error_count)++;
                     }
                 }
-                modifyLines(*linesTable_Head, linec, 0);
             }
             else {
-            	printf("Pass Zero. ");
-            	printf("Line %d. Error: Nested MACRO.\n", linec);
+            	printf("Pass Zero. Line %d. Error: Nested MACRO.\n", linec);
             	(*error_count)++;
             }
         }
@@ -615,11 +631,18 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         /*
         * Else, if line has END directive
         */
-        else if (!strcmp(line, "END\n")) {
-            // To be correctly defined, the line must contain only END
-            tmpMDT = addMDT(&mdtTable_Head, line, linec);
-            inMacro--;
-            modifyLines(*linesTable_Head, linec, 0);
+        else if ((!strcmp(line, "END\n")) || (!strcmp(line, " END\n"))) {
+            // Checks whether END happens within a MACRO
+		    if (inMacro) {
+		        tmpMDT = addMDT(&mdtTable_Head, line, linec);
+		        inMacro = 0;
+		        modifyLines(*linesTable_Head, linec, 0);
+		    }
+		    else {
+		        linesTmp = searchLines(*linesTable_Head, linec);
+		        printf("Pass zero. Line %d. Semantic error: END without MACRO.\n", linec);
+		        (*error_count)++;
+		    }
         }
 
         /*
@@ -643,11 +666,15 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
             // Else, line is not inside of MACRO definition
             else {
-                if (linePos = GetToken(line, token1, linePos)) {
+                while(linePos = GetToken(line, token1, linePos)) {
                     tmpMDT = searchMNT(mntTable_Head, token1);
 
                     // If token1 is found on the MDT, found a MACRO
                     if (tmpMDT != NULL) {
+                    	if(linePos = GetToken(line, token2, linePos)) {
+                    		printf("Pass Zero. Line %d. Sintatic error: Macro has parameters\n");
+                    		(*error_count)++;
+                    	}
                         while ((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END "))) {
                             fprintf(fout, "%s\n", tmpMDT->line);
                             linem = insertLines(*linesTable_Head, tmpMDT->lineNum, linem);
@@ -655,19 +682,38 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
                             tmpMDT = tmpMDT->next;
                         }
                     }
-
                     // Else, it is not a MACRO
                     else {
-                        fprintf(fout, "%s", line);
-                        linem++;
-                        modifyLines(*linesTable_Head, linec, linem);
+                    	if(!strcmp(token1, "SECTION")) {
+	 						sec = 0;
+	 					}
+	 					else {
+	 						if(!sec) {
+	 							if(!strcmp(token1, "TEXT")) {
+	 								sec = 1;
+	 							}
+	 							else if(!strcmp(token1, "DATA")) {
+	 								sec = 2;
+	 							}
+	 							else sec = 3; //unknown section
+	 						}
+	 					}
+	 					strcat(lineOut, token1);
+						strcat(lineOut, " ");
                     }
                 }
+                lineOut[strlen(lineOut) - 1] = '\n';
+    			fprintf(fout, "%s", lineOut);
+                linem++;
+                modifyLines(*linesTable_Head, linec, linem);
             }
         }
     }
     // If some MACRO was not finished by the end of the code
-    if (inMacro) printf("Pass zero. Error: MACRO is missing END.\n");
+    if (inMacro) {
+    	printf("Pass zero. Semantic Error: MACRO is missing END.\n");
+    	(*error_count)++;
+    }
 
     /*
     * After its use during passage zero, MNT and MDT will
@@ -700,6 +746,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	struct output_line *lineOut = NULL; //linha atual
 	struct sym_table_node *symTable = NULL;
 	struct sym_table_node *tmp_sym = NULL;
+	struct fileLines *tmp_line = NULL;
 	struct op_table_node *tmp_op = NULL;
 	struct op_table_node opTable[] = {	"ADD", 1, 1,
 										"SUB", 2, 1,
@@ -721,11 +768,11 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     
     	printf("In first while\n");
     	line_count++;
+    	tmp_line = searchLines(*linesTable_Head, line_count);
+    	line_count = tmp_line->lineNum;
     	label_count = 0;
     	linePos = 0;
     	dir = -1;
-    	//replace = NULL;
-    	//tmp_op = NULL; //why?
     	lineOut = (struct output_line*)malloc(sizeof(struct output_line)); //free if finds an error?
     	lineOut->opcode = -1;
     	lineOut->op[0] = -1;
