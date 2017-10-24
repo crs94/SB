@@ -568,7 +568,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         linec++; // Increments line counter
 		linesTmp = searchLines(*linesTable_Head, linec);
 		if(linesTmp != NULL) lineo = linesTmp->lineNum;
-        printf("%s", line);
         linePos = 0;
         lineOut[0] = '\0';
 
@@ -592,19 +591,22 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 			                    modifyLines(*linesTable_Head, linec, 0);
 			                }
 			                else {
-			                	printf("Pass zero. Line %d. Sintatic error: Unexpected token %s\n", lineo, token2);
+			                	printf("Pass zero: ");
+			                	printf("Line %d. Sintatic error: Unexpected token %s\n", lineo, token2);
                     			(*error_count)++;
 			                }
 		                }
                     }
                     else {
-                    	printf("Pass zero. Line %d. Sintatic error: invalid label.\n", lineo);
+                    	printf("Pass zero: ");
+                    	printf("Line %d. Sintatic error: invalid label.\n", lineo);
                     	(*error_count)++;
                     }
                 }
             }
             else {
-            	printf("Pass Zero. Line %d. Error: Nested MACRO.\n", lineo);
+            	printf("Pass Zero: ");
+            	printf("Line %d. Error: Nested MACRO.\n", lineo);
             	(*error_count)++;
             }
         }
@@ -621,7 +623,8 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 		    }
 		    else {
 		        linesTmp = searchLines(*linesTable_Head, linec);
-		        printf("Pass zero. Line %d. Semantic error: END without MACRO.\n", lineo);
+		        printf("Pass zero: ");
+		        printf("Line %d. Semantic error: END without MACRO.\n", lineo);
 		        (*error_count)++;
 		    }
         }
@@ -648,7 +651,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
             // Else, line is not inside of MACRO definition
             else {
                 while((linePos = GetToken(line, token1, linePos))) {
-
                     tmpMDT = searchMNT(mntTable_Head, token1);
 
                     // If token1 is found on the MDT, found a MACRO
@@ -689,7 +691,8 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
     }
     // If some MACRO was not finished by the end of the code
     if (inMacro) {
-    	printf("Pass zero. Semantic Error: MACRO is missing END.\n");
+    	printf("Pass zero: ");
+    	printf("Semantic Error: MACRO is missing END.\n");
     	(*error_count)++;
     }
 
@@ -747,7 +750,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 
     while(GetLine(fin, line)) {
 
-    	printf("In first while\n");
     	line_count++;
     	tmp_line = searchLines(*linesTable_Head, line_count);
     	line_original = tmp_line->lineNum;
@@ -762,24 +764,30 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	lineOut->next = NULL;
 
     	while(GetToken2(line, token1, &linePos)) {
-    		printf("In second while\n");
+    		// Checks whether token found is a label
 			if(token1[strlen(token1) - 1] == ':') {
-    			printf("Found Label in line %d\n", line_count);
-				if(IsLabel(token1)) {
+                // Checks whether label is valid
+    			if(IsLabel(token1)) {
+    			    // Checks whether line has more than one label
 					if(label_count == 0) {
 						tmp_sym = SearchSym(symTable, token1);
+
+						// If label is not on symTable
 						if(tmp_sym == NULL) {
 							AddSym(&symTable, token1, lc[sec], 1, sec); //found label definition
-							printf("Added label %s to symtable\n", token1);
 							tmp_sym = symTable;
 						}
+
+						// Else, if label is on symTable
 						else {
+                            // If label has already been defined
 							if(tmp_sym->defined) {
 								printf("Line %d. Semantic error: Label redefinition\n", line_original);
 								(*error_count)++;
 							}
-							else { //Encontrou definição de uma label referenciada anteriormente.
-								printf("Found definition of previous forward reference\n");
+
+                            // Else, if label has already been found, but it is yet to be defined
+							else {
 								tmp_sym->defined = 1;
 								tmp_sym->address = lc[sec];
 								tmp_sym->sec = sec;
@@ -797,15 +805,20 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 					(*error_count)++;
 				}
     		}
+
+    		// Else, if token found is not a label
     		else {
+                // Checks whether token is valid
 				if(IsValid(token1)) {
 					tmp_op = SearchOp(opTable, token1);
-					if(tmp_op != NULL) { //found an operation
-						printf("Found operation in line %d\n", line_count);
+                    // Checks whether token is an instruction
+					if(tmp_op != NULL) {
+                        // If instruction is in DATA
 						if(sec == 2) {
 							printf("Line %d. Semantic error: Operation inside DATA section\n", line_original);
 							(*error_count)++;
 						}
+                        // Else, if instruction is outside of TEXT and DATA
 						else {
 							if(!sec) {
 								printf("Line %d. Semantic error: Operation outside TEXT section\n", line_original);
@@ -819,34 +832,35 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 
 						// Gets operands and any other tokens in the line
 						while(GetToken2(line, token1, &linePos)) {
-							printf("In third while\n");
+							// Checks whether token found is valid or if it is the first argument of COPY
 							if(IsValid(token1) ||
 							((opr_count == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
+							    // Removes the comma after the argument
 								if(token1[strlen(token1)-1] == ',') {
 									token1[strlen(token1)-1] = '\0';
 								}
+
+								// Checks whether the number of arguments is right
 								if(opr_count < tmp_op->operands) {
-									printf("Gonna search symbol!\n");
 									tmp_sym = SearchSym(symTable, token1);
-									if(tmp_sym != NULL) { //found operand in symTable
-										if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
+
+									// If token is in symTable
+									if(tmp_sym != NULL) {
+                                        if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
 											lineOut->op[opr_count] = tmp_sym->address;
 										}
-										else {
+                                        else {
 											lineOut->op[opr_count] = -1;
 											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
-											printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 										}
 									}
+
+									// Else, if token is yet to be defined
 									else {
-										// First forward reference
-										printf("Found forward reference to %s in line %d\n", token1, line_count);
 										AddSym(&symTable, token1, -1, 0, 0);
-										printf("Added forward reference to SymTable\n");
 										lineOut->op[opr_count] = -1;
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
 										tmp_sym = symTable;
-										printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 									}
 								}
 								else {
@@ -856,26 +870,30 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								opr_count++;
 							}
 							else {
+							    // Checks whether and offset will be added to the argument
 								if((!strcmp(token1, "+")) && (opr_count > 0) && (opr_count <= tmp_op->operands)) {
-									if(tmp_sym != NULL) { //if previous token was an operand
+                                    // Checks whether previous token is an argument
+									if(tmp_sym != NULL) {
+									    // Checks whether + is followed by an offset
 										if(GetToken2(line, token1, &linePos)) {
-											printf("Found offset\n");
-											if(IsNumber(token1)) { //checks if token is a number
-												printf("offset is a number\n");
+											// Checks whether offset is a number
+											if(IsNumber(token1)) {
 												offset = atoi(token1);
-												//previous operand is defined in symTable
+												// If token has already been defined
 												if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
-													printf("offset to previously defined label\n");
+                                                    // If defined offset is within the range of memory allocated for the label
 													if((offset < (tmp_sym->vector))) {
 														lineOut->op[opr_count-1] += offset;
 													}
+                                                    // Else, if offset goes beyond the delimited space reserved for its label
 													else {
 														printf("Line %d. Semantic error: offset %s too large\n", line_original, token1);
 														(*error_count)++;
 													}
 												}
+                                                // Else, if previous tokes is yet to be defined
 												else {
-													//puts offset at the last replace_node inserted at tmp_sym
+													// Add offset to correspondent reference list node
 													tmp_sym->list->offset = offset;
 												}
 											}
@@ -906,19 +924,25 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 							(*error_count)++;
 						}
 					}
+
+					// If token is not an instruction
 					else {
+                        // Searches directives table
 						for(i = 0; i < 3; i++) {
 							if(!strcmp(dirTable[i], token1)) {
 								dir = i;
 							}
 						}
+                        // If token is either SECTION or SPACE or CONST
 						if(dir > -1) {
-							printf("Found directive %s in line %d\n", token1, line_original);
+							// Checks whether directive is not SECTION
 							if(dir != 2) {
+                                // If directive is within TEXT
 								if(sec == 1) {
 									printf("Line %d. Semantic error: Directive inside TEXT section\n", line_original);
 									(*error_count)++;
 								}
+                                // Else, if directive is outside of TEXT and DATA
 								else {
 									if(!sec) {
 										printf("Line %d. Semantic error: Directive outside of DATA section\n", line_original);
@@ -926,21 +950,24 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									}
 								}
 							}
-							if(dir == 0) { //SPACE
-								//incrementa LC e processa
-								//inclui valor de vector no nodo apontado por tmp_sym
+							// Checks whether directive is SPACE
+							if(dir == 0) {
+								// Checks whether SPACE follows a label
 								if(label_count == 1) {
 									i = 0;
+									// Gets next token in line
 									while(GetToken2(line, token1, &linePos)) {
 										if(i == 0) {
-											if(IsNumber(token1)) { //checks if token is a number
+                                            // If token is a number
+											if(IsNumber(token1)) {
+                                                // There is a vector associated to the label
 												offset = atoi(token1);
 												lc[2] += offset;
-												//tmp_sym points to label last added
 												tmp_sym->vector = offset;
 												lineOut->opcode = 15;
 												lineOut->op[0] = offset;
 											}
+                                            // Else, if token is not a number
 											else {
 												printf("Line %d. Sintatic error: Expected a number after SPACE\n", line_original);
 												(*error_count)++;
@@ -948,12 +975,13 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										}
 										i++;
 									}
+									// If there is more than one argument in SPACE
 									if(i > 1) {
 										printf("Line %d. Sintatic error: Too many operands in SPACE\n", line_original);
 										(*error_count)++;
 									}
+									// Else, if SPACE had no operands
 									else {
-										// SPACE had no operands
 										if(i == 0) {
 											lc[2]++;
 											lineOut->opcode = 15;
@@ -966,27 +994,32 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									(*error_count)++;
 								}
 							}
+
+							// Else, if directive is CONST
 							else {
-								if(dir == 1) { // CONST
-									//incrementa LC e processa
-									//deve aceitar números positivos e negativos (inteiros e hexadecimais)
+								if(dir == 1) {
+									// Checks whether CONST follows a label
 									if(label_count == 1) {
 										i = 0;
+										// Gets next token in line
 										while(GetToken2(line, token1, &linePos)) {
 											if(i == 0) {
+                                                // If token is an hexadecimal number
 												if(IsHex(token1)) {
 													offset = HexToInt(token1);
 													lc[2]++;
 													lineOut->opcode = 0;
 													lineOut->op[0] = offset;
 												}
+                                                // Else, if token is a number
 												else {
-													if(IsNumber(token1)) { //checks if token is a number
+													if(IsNumber(token1)) {
 														offset = atoi(token1);
 														lc[2]++;
 														lineOut->opcode = 0;
 														lineOut->op[0] = offset;
 													}
+													// Else, if token is neither a decimal nor an hexadecimal
 													else {
 														printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 														(*error_count)++;
@@ -995,10 +1028,12 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 											}
 											i++;
 										}
+										// If CONST has no arguments
 										if(i == 0) {
 											printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 											(*error_count)++;
 										}
+										// Else, if CONST has more than one argument
 										else {
 											if(i > 1) {
 												printf("Line %d. Sintatic error: Too many operands in CONST\n", line_original);
@@ -1011,40 +1046,47 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										(*error_count)++;
 									}
 								}
+								// Else, if directive is SECTION
 								else {
 									if(dir == 2) {
+                                        // Checks whether the line has a label
 										if(label_count > 0) {
 											printf("Line %d. Sintatic error: Label before SECTION\n", line_original);
 											(*error_count)++;
 										}
 										else {
 											i = 0;
+                                            // Gets next token
 											while(GetToken2(line, token1, &linePos)) {
 												if(i == 0) {
-													if(IsValid(token1)) { //checks if token is a number
+                                                    // Checks whether token is valid
+													if(IsValid(token1)) {
+													    // If token is TEXT
 														if(!strcmp(token1, "TEXT")) {
+														    // If not yet inside of TEXT
 															if(sec != 1) {
 																sec = 1;
-																printf("Found TEXT Section.\n");
 															}
-															else {
+                                                            else {
 																printf("Line %d. Semantic error: More than one TEXT section\n", line_original);
 																(*error_count)++;
 															}
 														}
+														// Else, if token is DATA
 														else {
 															if(!strcmp(token1, "DATA")) {
+																// If not yet inside of DATA
 																if(sec != 2) {
 																	sec = 2;
-																	printf("Found DATA Section.\n");
 																}
 																else {
 																	printf("Line %d. Semantic error: More than one DATA section\n", line_original);
 																	(*error_count)++;
 																}
 															}
+															// Else, if neither TEXT nor DATA
 															else {
-																printf("Line %d. Sintatic error: Invalid operand in diretive SECTION\n",line_original);
+																printf("Line %d. Sintatic error: Invalid operand in directive SECTION\n",line_original);
 																(*error_count)++;
 															}
 														}
@@ -1057,10 +1099,12 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 
 												i++;
 											}
+											// If no arguments follow SECTION
 											if(i == 0) {
 												printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
 												(*error_count)++;
 											}
+											// Else, if SECTION has more than one argument
 											else {
 												if(i > 1) {
 													printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
@@ -1069,7 +1113,8 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 											}
 										}
 									}
-									else { //primeiro token após label(se houver) não é instrução ou diretiva
+									// Else, if neither instruction nor directive follow label
+									else {
 										printf("Line %d. Sintatic error: Token %s. Expected instruction or directive\n", line_original, token1);
 										(*error_count)++;
 									}
@@ -1086,14 +1131,11 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	}
 
     	if(lineOut->opcode != -1) {
-    		printf("Adding line to output\n");
     		if(sec == 2) {
-    			printf("Adding to head_data\n");
-				AddLine(lineOut, &head_data);
+    			AddLine(lineOut, &head_data);
 			}
 			else {
 				if(sec == 1 ) {
-					printf("Adding to head_text\n");
 					AddLine(lineOut, &head_text);
 				}
 			}
@@ -1101,8 +1143,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 		else {
 			free(lineOut);
 		}
-
-    	printf("To next line o/\n");
     }
     printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
     // Acusar erro se lc[1] = 0? (no section TEXT)
