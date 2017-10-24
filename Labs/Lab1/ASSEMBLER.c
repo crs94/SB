@@ -207,7 +207,6 @@ int main(int argc, char *argv[]) {
 
 			fclose(fp_in);
 			fclose(fp_out);
-			//remove(pass_pre_out);
 
 			return errors;
 		}
@@ -265,8 +264,6 @@ int main(int argc, char *argv[]) {
 
 				fclose(fp_in);
 				fclose(fp_out);
-				//remove(pass_pre_out);
-				//remove(pass_zero_out);
 
 				return errors;
 			}
@@ -296,8 +293,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	struct equ_tab *equTable_Head = NULL;	//
 	struct equ_tab *tmp = NULL;				//
 
-    //line[0] = '\0';
-
     while(GetLine(fin, line)) {
 
     	// Increments line counter
@@ -323,7 +318,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    	if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			modifyLines(*linesTable_Head, linec, 0);
-    			//modifyLines(linesTable_Head, linec, 0);
     			do {
     				// Repeat while line == (blanks and/or '\n')
     				if (!GetLine(fin, lineOut)) {
@@ -332,8 +326,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     				}
     				linec++;
     				addLines(linesTable_Head, linec, 0);
-					//addLines(&linesTable_Head, linec, 0);
-    			} while (strlen(lineOut) == 0);
+				} while (strlen(lineOut) == 0);
     			if (!endFile) {
 	    			strcat(line, " ");
 	    			strcat(line, lineOut);
@@ -350,7 +343,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     		*/
 	    	if (strstr(line, " EQU ") || strstr(line, "EQU ") || strstr(line, " EQU\n")) {
 	    		modifyLines(*linesTable_Head, linec, 0);
-	    		//modifyLines(linesTable_Head, linec, 0);
 	    		if((linePos = GetToken(line, token1, linePos))) {
 		    		// Checks if first token is a valid label
 		    		if(IsLabel(token1)) {
@@ -425,7 +417,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     		  	 */
 		    	if(strstr(line, "IF ") || strstr(line, " IF ") || strstr(line, " IF\n")) {
 		    		modifyLines(*linesTable_Head, linec, 0);
-		    		//modifyLines(linesTable_Head, linec, 0);
 		    		if((linePos = GetToken(line, token1, linePos))) {
 		    			// Checks if first token is an IF
 		    			if(!strcmp(token1, "IF")) {
@@ -444,8 +435,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    								if (GetLine(fin, line)) {
 		    								linec++;
 		    								addLines(linesTable_Head, linec, 0);
-		    								//addLines(&linesTable_Head, linec, 0);
-	    								}
+		    							}
 	    								else {
 	    									printf("Preprocess: ");
 	    									printf("Line %d. Semantic Error: IF in last line of file.\n", linec);
@@ -464,7 +454,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 											if (GetLine(fin, line)) {
 												linec++;
 												addLines(linesTable_Head, linec, 0);
-												//addLines(&linesTable_Head, linec, 0);
 											}
 											else {
 												printf("Preprocess: ");
@@ -551,8 +540,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     */
     DeleteEQU(equTable_Head);
 
-    //printf("End of Preprocess.\n\n");
-
     return (*error_count);
 }
 
@@ -577,7 +564,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
     struct fileLines *linesTmp = NULL;	//
 
 
-    //while ((GetLine(fin, line)) || (strlen(line) > 0)){
     while (GetLine(fin, line)) {
         linec++; // Increments line counter
 		linesTmp = searchLines(*linesTable_Head, linec);
@@ -666,7 +652,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
                     tmpMDT = searchMNT(mntTable_Head, token1);
 
                     // If token1 is found on the MDT, found a MACRO
-
                     if(tmpMDT != NULL) {
                         while (((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END ")) && (tmpMDT != NULL))) {
                             fprintf(fout, "%s\n", tmpMDT->line);
@@ -769,7 +754,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	label_count = 0;
     	linePos = 0;
     	dir = -1;
-    	lineOut = (struct output_line*)malloc(sizeof(struct output_line)); //free if finds an error?
+    	lineOut = (struct output_line*)malloc(sizeof(struct output_line));
     	lineOut->opcode = -1;
     	lineOut->op[0] = -1;
     	lineOut->op[1] = -1; //this will be tested before writing to file
@@ -786,7 +771,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 						if(tmp_sym == NULL) {
 							AddSym(&symTable, token1, lc[sec], 1, sec); //found label definition
 							printf("Added label %s to symtable\n", token1);
-							tmp_sym = symTable; //used by SPACE later?
+							tmp_sym = symTable;
 						}
 						else {
 							if(tmp_sym->defined) {
@@ -798,8 +783,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								tmp_sym->defined = 1;
 								tmp_sym->address = lc[sec];
 								tmp_sym->sec = sec;
-								//replace = tmp_sym;
-								//Can't replace yet because of vector length. will replace after the line is processed.
 							}
 						}
 						label_count++;
@@ -814,7 +797,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 					(*error_count)++;
 				}
     		}
-    		//Warning: things get REALLY confusing from here.
     		else {
 				if(IsValid(token1)) {
 					tmp_op = SearchOp(opTable, token1);
@@ -839,7 +821,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 						while(GetToken2(line, token1, &linePos)) {
 							printf("In third while\n");
 							if(IsValid(token1) ||
-							// I think this won't work when firt operand of COPY has offset
 							((opr_count == 0) && (!strcmp(tmp_op->name, "COPY")) && (token1[strlen(token1)-1] == ',') )) {
 								if(token1[strlen(token1)-1] == ',') {
 									token1[strlen(token1)-1] = '\0';
@@ -872,7 +853,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_original, tmp_op->name);
 									(*error_count)++;
 								}
-								opr_count++; //em que ponto(s) incrementar?
+								opr_count++;
 							}
 							else {
 								if((!strcmp(token1, "+")) && (opr_count > 0) && (opr_count <= tmp_op->operands)) {
@@ -1049,7 +1030,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 															else {
 																printf("Line %d. Semantic error: More than one TEXT section\n", line_original);
 																(*error_count)++;
-																//O que fazer com o resto da seção?
 															}
 														}
 														else {
@@ -1061,7 +1041,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 																else {
 																	printf("Line %d. Semantic error: More than one DATA section\n", line_original);
 																	(*error_count)++;
-																	//O que fazer com o resto da seção?
 																}
 															}
 															else {
@@ -1123,10 +1102,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 			free(lineOut);
 		}
 
-    	/*if(replace != NULL) {
-    		printf("Replacing list\n");
-    		ReplaceList(replace);
-    	}*/
     	printf("To next line o/\n");
     }
     printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
@@ -1325,10 +1300,10 @@ void deleteMNT(struct MNT *table) {
 //Found an undefined operand and need to include it in replace_list. Includes at the front of list
 void AddReplace(struct replace_list_node **node, int *n) {
 	struct replace_list_node *new = (struct replace_list_node*)malloc(sizeof(struct replace_list_node));
-	new->replace = n;//does it work?
+	new->replace = n;
 	new->offset = 0;
 	new->next = *node;
-	*node = new;//does it work?
+	*node = new;
 }
 
 /*
@@ -1345,7 +1320,7 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 		while (tmp != NULL) {
 			printf("InWhile\n");
 			printf("Replacing %d with %d\n",*tmp->replace, (temp->address + tmp->offset));
-			if(tmp->offset <= temp->vector) { 
+			if(tmp->offset <= temp->vector) {
 				(*tmp->replace) = (temp->address + tmp->offset);
 				printf("Replaced\n");
 			}
@@ -1971,7 +1946,7 @@ int insertLines(struct fileLines *table, int original, int modified) {
     /*
     * The lines found by searchLines is the line prior the
     * macro calling. Therefore, a new line will be inserted
-    * in between teh previous line and the macro calling.
+    * in between the previous line and the macro calling.
     */
     if (tmp != NULL) {
         new->lineNum = original;
