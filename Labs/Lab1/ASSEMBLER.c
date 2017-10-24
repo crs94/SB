@@ -112,7 +112,7 @@ struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 
 void AddReplace(struct replace_list_node **node, int *n);
 
-void ReplaceLists(struct sym_table_node *node);
+void ReplaceLists(struct sym_table_node *node, int *error);
 
 void AddLine(struct output_line *line, struct output_line **head);
 
@@ -854,7 +854,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										else {
 											lineOut->op[opr_count] = -1;
 											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
-											tmp_sym = symTable; //used in next else
 											printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 										}
 									}
@@ -865,7 +864,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										printf("Added forward reference to SymTable\n");
 										lineOut->op[opr_count] = -1;
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
-										tmp_sym = symTable; //used in next else
+										tmp_sym = symTable;
 										printf("Added pointer for replacement of %s in line %d\n", token1, line_count);
 									}
 								}
@@ -1134,7 +1133,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
     AdjustAdresses(symTable, lc[1]);
-    ReplaceLists(symTable);
+    ReplaceLists(symTable, error_count);
     i = 0;
     FinalErrorCheck(symTable, head_text, head_data, lc[1], &i);
     (*error_count) += i;
@@ -1335,7 +1334,7 @@ void AddReplace(struct replace_list_node **node, int *n) {
 /*
  * Replaces replace list of each node in SymTable and deletes the replace list
  */
-void ReplaceLists(struct sym_table_node *node) {
+void ReplaceLists(struct sym_table_node *node, int *error) {
 
 	struct replace_list_node *tmp = NULL;
 	struct sym_table_node *temp = node;
@@ -1346,8 +1345,15 @@ void ReplaceLists(struct sym_table_node *node) {
 		while (tmp != NULL) {
 			printf("InWhile\n");
 			printf("Replacing %d with %d\n",*tmp->replace, (temp->address + tmp->offset));
-			(*tmp->replace) = (temp->address + tmp->offset);
-			printf("Replaced\n");
+			if(tmp->offset <= temp->vector) { 
+				(*tmp->replace) = (temp->address + tmp->offset);
+				printf("Replaced\n");
+			}
+			else {
+				(*tmp->replace) = temp->address;
+				printf("Error: offset too large in operand %s\n", temp->label);
+				(*error)++;
+			}
 		    tmp = tmp->next;
 		}
 
