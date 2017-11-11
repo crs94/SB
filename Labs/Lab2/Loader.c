@@ -1,20 +1,18 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include<string.h>
+//#include<string.h>
 
 int main(int argc, char *argv[]) {
 
 	FILE *fp_in;
 	FILE *fp_out;
-	fpos_t pos;
-	char c;
+	fpos_t fpos;
 	char *map;
-	char str_aux[12]; //max size = 99GB?
-	char *name = argv[1];
 	int acc;	// Accumulator
 	int pc;		// Program Counter
 	int size = 0;
-	int headers;
+	int size_text = 0;
+	int size_data = 0;
 	int *chunks;
 	int *addresses;
 	int *memory;
@@ -27,54 +25,29 @@ int main(int argc, char *argv[]) {
 	addresses = (int*)malloc(n*sizeof(int));
 	for(j = 0; j<n; j++) {
 		chunks[j] = atoi(argv[j+3])
+		size += chunks[j];
 		addresses[j] = atoi(argv[j+3+n])
 	}
 	n = 0;
 	j = 0;
 	
-	fopen(fp_out);
+	fp_in = fopen(argv[1]);
+	fp_out = fopen(strcat(argv[1], ".im"));
 	
-	while((c = fgetc(fp_in)) != EOF) {
-		if(c == 'H') headers++;
-		if(c == 'T') headers++;
-		if(headers == 2) {
-			str_aux[n] = c;
-			n++;
-		}
-		else if(headers == 3) {
-			str_aux[n] = '\0';
-			size = atoi(str_aux);
-			headers++;
-			n = 0;
-			fgetpos(fp_in, &pos);
-		}
-		else if(headers == 4) {
-			n++;
-		}
-		else if(headers == 5) {
-			map = (char*)malloc((n+1)*(sizeof(char)));
-			fsetpos(fp_in, &pos);
-			headers++;
-		}
-		else if(headers == 6) {
-			if(j < n) {
-				map[j] = c;
-				j++;
-			}
-		}
-		else if(headers == 7) {
-			map[j] = '\0';
-			headers++;
-			n = 0;
-			fgetpos(fp_in, &pos); //Keeps position for after simulation?
-			break;
-		}
+	fscanf(fp_in, "%d", size_text);
+	fscanf(fp_in, "%d", size_data);
+	
+	if((size_text + size_data) > size) {
+		printf("OUT OF MEMORY - YOUR PROGRAM WILL NOT BE LOADED\n");
+		return 0;		
 	}
 	
-	memory = (int*)malloc(size*sizeof(int));
+	map = (char*)malloc((size_text + size_data)*(sizeof(char)));
+	fscanf(fp_in, "%s", map);
+	memory = (int*)malloc((size_text + size_data)*sizeof(int));
+	fgetpos(fp_in, &fpos);
 	
-	while(fscanf(fp_in, "%s", str_aux) != EOF) {
-		n = atoi(str_aux);
+	while(fscanf(fp_in, "%d", n) != EOF) {
 		memory[j] = n;
 		j++;
 	}
@@ -148,10 +121,26 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Finished simulation\n");
 	
-	fsetpos(fp_in, &pos);
-	//confere se programa cabe na memória
-	//novo while(fscanf), agora ajustando endereços em chunks
+	fsetpos(fp_in, &fpos);	
+	j = 0;
+	while(fscanf(fp_in, "%d", n) != EOF) {
+		memory[j] = n;
+		j++;
+	}
 	
-	
+	for(n = 0; n < size_text + size_data; n++) {
+		if(map[n] == '1') {
+			j = 0;
+			size = chunks[j];
+			while (memory[n] >= size) {
+				j++;
+				size += chunks[j];
+			}
+			memory[n] += (addresses[j] + chunks[j] - size);
+		}
+		fprintf(fp_out, "%d ", memory[n]);
+	}
+		
+	return 0;
 }
 	
