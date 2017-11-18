@@ -1,7 +1,6 @@
 //#ifndef _ONE_PASS_H_
 //#define _ONE_PASS_H_
 
-
 extern struct op_table_node {			// Struct to store a node of the operations table
 	char *name;							// Name of the operation
 	int opcode;							// Opcode
@@ -45,10 +44,10 @@ void AddLine(struct output_line *line, struct output_line **head);
 
 void DeleteOutputLines(struct output_line *first);
 
-void WriteObjectFile(FILE *fp, struct output_line *first);
-
 void AdjustAdresses(struct sym_table_node *table, int lc_text);
 
 void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText);
+
+void WriteObjectFile(FILE *fp, struct output_line *first);
 
 //#endif

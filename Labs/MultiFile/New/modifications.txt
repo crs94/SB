@@ -1,0 +1,12 @@
+04/11
+	Added some more comments to utils.c
+	Removed original GetToken. Replaced by GetToken2(renamed GetToken)
+	Changed IsValid to test for digit in first character
+	Changed IsHex to test if hex is not empty ("OX" or "-OX" only)
+	Included function Power() to replace pow() in HexToInt, so we don't have to include math.h
+	Changed AddLines(): removed pointer "before"
+	Renamed searchLines() as SearchLines()
+	
+	Loader.c: 
+	Usar valor de size para alocar espaço para map e memory
+	Simular antes ou depois de realocar arquivo?

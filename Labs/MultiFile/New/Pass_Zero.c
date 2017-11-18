@@ -40,10 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-//#include "Pass_Zero.h"
-
-//#define LINE_LENGTH 560
-//#define TOKEN_LENGTH 101
+#include "Pass_Zero.h"
 
 struct MNT {
     char label[101];
@@ -57,7 +54,7 @@ struct MDT {
     struct MDT *next;
 };
 
-//To be removed in final code?
+//To be removed in final code
 struct MDT *searchMNT(struct MNT *table, char *token);
 struct MDT *addMDT(struct MDT **table, char *toAdd, int line);
 void addMNT(struct MNT **table, char *toAdd);

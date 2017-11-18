@@ -1,0 +1,13 @@
+usar getopt
+preprocess: usar modes 'E', 'I', 'N'
+Macros aninhadas com parâmetros(pgs. 126 e 127)
+	MNT adiciona no inicio da lista
+	função RemoveMacro
+Procurar funções em C para parsing
+scanner(token, tree_root) acrescenta token à árvore eretorna número de erros encontrados?
+	while GetToken
+		monta árvore
+	se não houver erros na linha
+		parse tree (percorre árvore em ordem e realiza ação adequada?)
+		
+		

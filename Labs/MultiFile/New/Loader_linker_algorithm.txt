@@ -1,0 +1,18 @@
+Formato do arquivo - Linker:
+
+N nome do arquivo
+S size_text size_data
+U tabela de usos
+D tabela de definições
+M mapa de bits 
+T código objeto
+
+Formato do arquivo - Loader:
+size_text size_data mapa de bits código objeto
+
+Loader:
+1 - Pega tamanho das seções e mapa de bits
+2 - Checa se há memória suficiente para carregar arquivo
+	(obs: instruções e operandos não devem ser separados?)
+3 - Se sim, copia código objeto para uma estrutura de dados e faz a simulação
+4 - Recopia código objeto e gera arquivo de saída de acordo com o espaço disponível

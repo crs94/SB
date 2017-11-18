@@ -7,93 +7,127 @@ struct list_node {
 	struct list_node *next;
 }
 
+struct table_node {
+	char name[101];
+	int value;
+	struct table_node *next;
+}
+
 int main(int argc, char *argv[]) {
 
 	FILE *fp_in;
 	FILE *fp_out;
 	struct list_node *list = NULL;
-	struct list_node *new_node = NULL;
-	struct list_node *tmp = NULL;
-	int size_prev = 0;
+	struct list_node *new_list = NULL;
+	struct list_node *tmp_list = NULL;
+	struct table_node *use_table = NULL;
+	struct table_node *def_table = NULL;
+	struct table_node *new_tab = NULL;
+	struct table_node *tmp_tab = NULL;
 	int size = 0;
+	int size_prev = 0;
 	int i = 0;
-	int headers;
-	int replace;
-	char name[101];
-	char c;
+	int n = 0;
 	char *map;
-	char str_aux[12]; //max size = 99GB?
+	char header[3];
+	char name[101]; 
+
+	if ((fp_out = fopen(argv[1], "w")) == NULL) {
+        printf("Coudn't open output file!\n");
+        return 0;
+    }
+
+	for(i = 0; i < (argc-1); i++) {
 	
-	fopen(fp_out);
-	
-	// Assume-se que o usuário não fez a burrice de abrir e editar o código objeto XD
-	// Considera-se que o arquivo tem três linhas de cabeçalho iniciadas pela letra H, sem espaço ou ":" depois
-	// e uma única linha de código objeto com os opcodes e operandos
-	while(i < argc) {
-		headers = 0;
-		size += size_prev;
-		fopen();
-		// apenas a partir do segundo arquivo será preciso corrigir os endereços
-		// usar while(fgetc() para não limitar tamanho da linha? fazer duas passagens para determinar o tamanho de map
-		while(GetLine(fp_in, line)) { //modificar GetLine para retornar o tamanho da linha lida?
-			if(c == 'H') {
-				headers++;
-				if((headers == 1) && (i == 0)) {
-					//pega nome do programa? ou usa argv[1]?
-					n = 0;
-					while((c = fgetc(fp_in) != 'H')) {
-						name[n] = c;
+		size_prev += size;
+		
+		if ((fp_in = fopen(argv[i], "r")) == NULL) {
+			printf("File %s not found.\n", argv[i]);
+			return 0;
+		}
+		
+		while(fscanf(fp_in, "%s", header) != EOF) {
+			if(!strcmp(header, "N:")) {
+				fscanf(fp_in, "%s", name);
+				//testar se nome confere com argv[i]?
+			}
+			else if(!strcmp(header, "S:")) {
+				fscanf(fp_in, "%d", &size);
+			}
+			else if(!strcmp(header, "U:")) {
+				fscanf(fp_in, "%d", &size_U);
+				for(n = 0; n < size_D; n++) {
+					new_tab = (struct table_node*)malloc(sizeof(struct table_node));
+					//checar erros em malloc?
+					fscanf(fp_in, "%s %d", new_tab->name, new_tab->value);
+					new_tab->value += size_prev;
+					new_tab->next = NULL;
+					if(use_table == NULL) {
+						use_table = new_tab;
 					}
-					name[n] = '\0';
-				}
-				else if(headers == 2) {
-					//copia tamanho para uma string. GetToken? for?
-					n = 0;
-					while((c = fgetc(fp_in) != 'H')) {
-						str_aux[n] = c;
+					else {
+						tmp_tab = use_table;
+						while (tmp_tab->next != NULL) {
+							tmp_tab = tmp_tab->next;
+						}
+						tmp_tab->next = new;
 					}
-					str_aux[n] = '\0';
-					size_prev = atoi(str_aux);
-				}
-				else if(headers == 3) {
-					fgetpos(fp_in);
-					n = 0;
-					while((c = fgetc(fp_in) != 'T')) {
-						n++;
-					}
-					map = (char*)malloc((n+1)*(sizeof(char)));
-					fsetpos() // verificar manual
-					for(j = 0; j < n; j++) {
-						map[j] = fgetc(fp_in);
-					}
-					map[j] = '\0';
-				}
-				else {
-					//erro
+					tmp_tab = NULL;
 				}
 			}
-			else if(c == 'T') {
-				n = 0;
-				fscanf(fp_in, "%d", &replace);
-				while(replace != EOF) { // Not sure if this works
-					if(map[n] == '1') {
-						replace += (size + 1);
+			else if(!strcmp(header, "D:")) {
+				fscanf(fp_in, "%d", &size_D);
+				for(n = 0; n < size_D; n++) {
+					new_tab = (struct table_node*)malloc(sizeof(struct table_node));
+					//checar erros em malloc
+					fscanf(fp_in, "%s %d", new_tab->name, new_tab->value);
+					// Ao terminar de ler todos os arquivos, já teremos a 
+					// tabela global de definições
+					new_tab->value += size_prev;
+					new_tab->next = NULL;
+					if(def_table == NULL) {
+						def_table = new_tab;
 					}
-					n++
-					new_node = (struct list_node*)malloc(sizeof(struct list_node));
-					new_node->value = replace;
-					new_node->next = NULL;
-					tmp = list
-					while(tmp->next != NULL) {
-						tmp = tmp->next;
+					else {
+						tmp_tab = def_table;
+						while (tmp_tab->next != NULL) {
+							tmp_tab = tmp_tab->next;
+						}
+						tmp_tab->next = new;
 					}
-					tmp->next = new_node;
-					
-					fscanf(fp_in, "%d", &replace);	
+					tmp_tab = NULL;
+				}
+			}
+			else if(!strcmp(header, "M:")) {
+				map = (char*)malloc(size*sizeof(char));
+				fscanf(fp_in, "%s", map);
+			}
+			else if(!strcmp(header, "T:")) {
+				for(n = 0; n < size_D; n++) {
+					new_list = (struct list_node*)malloc(sizeof(struct list_node));
+					//checar erros em malloc
+					fscanf(fp_in, "%d", new_list->value);
+					new_list->value += size_prev;
+					new_list->next = NULL;
+					if(list == NULL) {
+						list = new_list;
+					}
+					else {
+						tmp_list = list;
+						while (tmp_list->next != NULL) {
+							tmp_list = tmp_list->next;
+						}
+						tmp_list->next = new;
+					}
+					tmp_list = NULL;
 				}
 			}
 		}
+		
+		fclose(fp_in);
 	}
+	
 	//escreve cabeçalho
 	//escreve lista no arquivo de saída
+	//free map[i] e use_table[i];
 }

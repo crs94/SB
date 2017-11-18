@@ -1,4 +1,3 @@
-
 //#ifndef UTIL_H_   /* Include guard */
 //#define UTIL_H_
 
@@ -14,9 +13,7 @@ extern struct fileLines {
 
 int GetLine(FILE *fp, char *lineBuffer);
 
-int GetToken(char *lineBuffer, char *tokenBuffer, int p);
-
-int GetToken2(char *lineBuffer, char *tokenBuffer, int *p);
+int GetToken(char *lineBuffer, char *tokenBuffer, int *p);
 
 int IsLabel(char *token);
 
@@ -25,6 +22,8 @@ int IsValid(char *token);
 int IsNumber(char *token);
 
 int IsHex(char *token);
+
+int Power(int base, int n);
 
 int HexToInt(char *token);
 

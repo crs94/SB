@@ -3,7 +3,8 @@
 * FILE NAME: utils.c
 *
 *
-* PURPOSE:
+* PURPOSE: 	Contains miscellaneous functions used by many other files in
+*			the assembler code
 *
 *
 * FILE REFERENCES:
@@ -35,13 +36,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include "utils.h"
 
-#define LINE_LENGTH 560
-#define TOKEN_LENGTH 101
 
-struct fileLines {
+struct fileLines {				?
     int lineNum;
     int lineMod;
     struct fileLines *next;
@@ -53,12 +51,12 @@ struct fileLines {
  * spaces removed and all letters capitalized
  */
 int GetLine(FILE *fp, char *lineBuffer) {
-
+	
 	char c;		// Keeps character read from file
 	int n = 0;	// Index of current position in lineBuffer
 
 	c = fgetc(fp);
-	while ((c != '\n') && (n < 600) && (c != EOF) && (c != ';')) {
+	while ((c != '\n') && (n < LINE_LENGTH) && (c != EOF) && (c != ';')) {
 		if (n == 0) {
 			// Ignores initial blanks
 			while ((c == ' ') || (c == '\t')) {
@@ -110,7 +108,9 @@ int GetLine(FILE *fp, char *lineBuffer) {
 	else {
 		lineBuffer[0] = '\0';
 	}
-
+	
+	printf("Line: %s\n", lineBuffer);
+	
 	if (c != EOF) return 1;
 	return 0;
 }
@@ -120,31 +120,12 @@ int GetLine(FILE *fp, char *lineBuffer) {
  * and returns it in tokenBuffer. p keeps the position of next token
  * in lineBuffer for the next call to GetToken
  */
-int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
-
-	int n = 0;
-	if (lineBuffer[p] == '\n') return 0; // No token left in line
-
-	while ((!isspace(lineBuffer[p])) && (n < 100)) {
-		tokenBuffer[n] = lineBuffer[p];
-		n++;
-		p++;
-	}
-	tokenBuffer[n] = '\0';
-
-	if (lineBuffer[p] == '\n') return p;
-	return ++p;
-}
-
-/*
- * Alternative version of GetToken
- */
-int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
-	printf("In GetToken2\n");
+int GetToken(char *lineBuffer, char *tokenBuffer, int *p) {
+	printf("In GetToken\n");
 	int n = 0;
 	if (lineBuffer[(*p)] == '\n') return 0;
 
-	while ((!isspace(lineBuffer[(*p)])) && (n < 100)) {
+	while((!isspace(lineBuffer[(*p)])) && (n < 100)) {
 		tokenBuffer[n] = lineBuffer[(*p)];
 		n++;
 		(*p)++;
@@ -156,7 +137,7 @@ int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
 }
 
 /*
- * This function tests if token is a label
+ * This function tests if token is a valid label
  */
 int IsLabel(char *token) {
 
@@ -168,9 +149,8 @@ int IsLabel(char *token) {
 	}
 
 	while (token[++i] != '\0') {
-
-		 /* A token is valid if it contains only
-		  * alphanumeric characters or underscores */
+		/* A token is valid if it contains only
+		 * alphanumeric characters or underscores */
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			/* Return 0 if colon is found and it is not
 			 * at the last position in token */
@@ -180,6 +160,8 @@ int IsLabel(char *token) {
 		}
 	}
 	
+	/* A label is invalid if it is named like an
+	 * operation or directive */
 	if(!strcmp(token, "EQU:")) {
 		return 0;
 	}
@@ -260,12 +242,17 @@ int IsLabel(char *token) {
 int IsValid(char *token) {
 
 	int i = 0;
-
-	while (token[i] != '\0') {
+	
+	// If first character is a digit return zero
+	if(isdigit(token[i])) {
+		return 0;
+	}
+	/* A token is valid if it contains only
+	 * alphanumeric characters or underscores */
+	while (token[++i] != '\0') {
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			return 0;
 		}
-		i++;
 	}
 	return 1;
 }
@@ -278,12 +265,14 @@ int IsNumber(char *token) {
 	int i = 0;
 	int negative = 0;
 
+	// Flags a negative number
 	if(token[i] == '-') {
 		negative = 1;
 		i++;
 	}
 
 	while( i < strlen(token)) {
+		// Test if character is a decimal digit
 		if (!isdigit(token[i])) {
 			return 0;
 		}
@@ -302,22 +291,48 @@ int IsNumber(char *token) {
  */
 int IsHex(char *token) {
 
+	int len = strlen(token);
+	int i = 0;
+	
+	if(len > 2) { // Token is not just "0X"
+		if(token[i] == '-') {
+			if(len <= 3) return 0;
+			negative = 1;
+			i++;
+		}
+		if ((token[i] == '0') && (token[++i] == 'X')) {
+			while( i < len ) {
+				i++;
+				/* Return 0 if character is not a digit and it is
+				 * not a letter from A to F */
+				if((token[i] < 48) || ((token[i] > 57) && 
+				(token[i] < 65)) || (token[i] > 70)) {
+					return 0;
+				}
+			}
+		}
+		else return 0;
+
+		if(negative) {
+			return -1;
+		}
+
+		return 1;
+	}
+	else return 0;
+}
+
+/* Power: raise base to n-th power; n >= 0 */
+int Power(int base, int n) {
+
 	int i;
+	int p = 1;
 
-	if ((token[0] == '0') && (token[1] == 'X')) {
-		for(i = 2; i<strlen(token); i++) {
-			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
-		}
-		return 1;
-	}
-	else if ((token[0] == '-') && (token[1] == '0') && (token[2] == 'X')) {
-		for(i = 3; i<strlen(token); i++) {
-			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
-		}
-		return 1;
+	for (i = 1; i <= n; ++i) {
+		p = p * base;
 	}
 
-	return 0;
+	return p;
 }
 
 /*
@@ -326,19 +341,21 @@ int IsHex(char *token) {
  */
 int HexToInt(char *token) {
 
-	int i = strlen(token) - 1;
+	int len = (strlen(token) - 1);
 	int j = 0;
 	int digit = 0;
 	int sum = 0;
-	char aux = token[i];
+	char aux = token[len];
 
-	while ((i > 0) && (aux != 'X')) {
+	while ((len > 0) && (aux != 'X')) {
+		// if token[len] is between 0 and 9, obtain numeric value
 		if ((aux > 47) && (aux < 58)) digit = aux - 48;
+		// else if token[len] is between A and F, obtain numeric value
 		else if ((aux > 64) && (aux < 71)) digit = aux - 55;
-		sum+=(digit*(pow(16, j)));
-		i--;
+		sum+=(digit*(Power(16, j)));
+		len--;
 		j++;
-		aux = token[i];
+		aux = token[len];
 	}
 
 	if (token[0] == '-') sum *= -1;
@@ -351,10 +368,9 @@ int HexToInt(char *token) {
  * Add lines at the end of the table
  * 	It is essentially used during Preprocess to create the table
  */
-void addLines(struct fileLines **table, int original, int modified) {
+void AddLines(struct fileLines **table, int original, int modified) {
 
 	struct fileLines* tmp = *table;
-    struct fileLines* before = NULL;
 	struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
 
     new->lineNum = original;
@@ -364,29 +380,26 @@ void addLines(struct fileLines **table, int original, int modified) {
     // If the table is empty, insert first node
 	if (*table == NULL) {
         *table = new;
-        return;
     }
-
-    // Else, search for empty space
-    while (tmp != NULL) {
-        before = tmp;
-        tmp = tmp->next;
-	}
-    before->next = new;
+	else {
+    	// Else, search for empty space
+    	while (tmp->next != NULL) {
+    		tmp = tmp->next;
+		}
+   		tmp->next = new;
+   	}
 }
 
 /*
  * Searches for lines in the table
  * 	It is used to find a given line addressed by the variable modified
  */
-struct fileLines *searchLines(struct fileLines *table, int modified) {
+struct fileLines *SearchLines(struct fileLines *table, int modified) {
 
     struct fileLines* tmp = table;
 
-    /*
-    * Searches whole table until correct modified line is found
-    * or until the end is reached
-    */
+    /* Searches whole table until correct modified line is found
+     * or until the end is reached */
     while ((tmp != NULL)) {
     	if (tmp->lineMod == modified) {
         	// If found, returns a pointer to the line in the table
@@ -406,17 +419,18 @@ struct fileLines *searchLines(struct fileLines *table, int modified) {
 int insertLines(struct fileLines *table, int original, int modified) {
 
 	int n = 0, update = 0;
-    struct fileLines* new = (struct fileLines*)malloc(sizeof(struct fileLines));
+    struct fileLines* new = NULL;
     struct fileLines* tmp = NULL;
     struct fileLines* b4 = NULL;
     tmp = searchLines(table, modified);
 
     /*
-    * The lines found by searchLines is the line prior the
+    * The line found by searchLines is the line prior to the
     * macro calling. Therefore, a new line will be inserted
-    * in between teh previous line and the macro calling.
+    * in between the previous line and the macro calling.
     */
-    if (tmp != NULL) {
+    if(tmp != NULL) {
+    	new = (struct fileLines*)malloc(sizeof(struct fileLines));
         new->lineNum = original;
         new->lineMod = modified + 1;
         new->next = tmp->next;
@@ -431,14 +445,14 @@ int insertLines(struct fileLines *table, int original, int modified) {
 		* lineMod variable will match the new order imposed
 		* by the insertion of the new line.
 		*/
-        while (tmp != NULL) {
+        while(tmp != NULL) {
         	/*
         	* If it is the first line to be modified,
         	* it means that it is the macro calling and
         	* the line will not be on the final output
         	* file. Therefore, its lineMod value must be 0.
         	*/
-        	if (n == 0) {
+        	if(n == 0) {
         		tmp->lineMod = 0;
         		b4 = tmp;
         		tmp = tmp->next;
