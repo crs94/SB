@@ -47,6 +47,8 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
 	int defined;						// 1 if label definition was found. 0 otherwise
+	int ext;                            // 1 if label definition is extern. 0 otherwise
+	int pub;                            // 1 if label is public. 0 otherwise
 	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
 	int sec;							// Section in which symbol is defined
@@ -128,153 +130,100 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 
 int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_files);
 
 /********************************** MAIN ********************************/
 
 int main(int argc, char *argv[]) {
 
 	// Error message displayed if wrong arguments are passed to the program
-	char usage[] = "\n\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
+	char usage[] = "\n\nUsage: ./assembler module1.asm module2.asm module3.asm\n";
 
-	char *input_file = argv[2];				// Name of input file
-	char *output_file = argv[3];			// Name of output file
+	char *output_file;                      // Name of output file
+	char *p_str;                            // Pointer for '.asm' within string
 	char pass_pre_out[TOKEN_LENGTH];		// Name of output file from preprocessing step
 	char pass_zero_out[TOKEN_LENGTH];		// Name of output file from pass zero
+	char pass_one_out[TOKEN_LENGTH];		// Name of output file from pass one
 	int errors = 0;							// Error counting
+	int n;                                  // Counter of files
 	FILE *fp_in = NULL;						// Pointer to input files
 	FILE *fp_out = NULL;					// Pointer to output files
 	struct fileLines *line_table = NULL;	// Pointer to beginning of lines table
 
 
-	if(argc != 4) {
+	if((argc < 2) || (argc > 4)) {
 		printf("%s\n",usage);
 		return 1;
 	}
 
-    if ((fp_in = fopen(input_file, "r")) == NULL) {
-		printf("Input file not found.\n");
-		return 1;
-	}
+    for (n = 0; n < argc - 1; n++) {
+        if ((fp_in = fopen(argv[n + 1], "r")) == NULL) {
+            printf("Input file not found.\n");
+            return 1;
+        }
 
-    if(!strcmp(argv[1], "-p")) {
+        strcpy(output_file, argv[n + 1]);
+        p_str = strstr(output_file, ".asm");
+        strncpy (p_str, "", 1);
+        printf("%s\n", output_file);
 
-    	if ((fp_out = fopen(output_file, "w")) == NULL) {
-			printf("Could not open output file.\n");
-			return 1;
-		}
+        strcpy(pass_pre_out, output_file);
+        strcat(pass_pre_out, ".pre");
 
-    	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    		printf("Preprocessing step returned errors\n");
-    	}
+        if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
+            printf("Could not open intermediate file 1.\n");
+            return 1;
+        }
 
-    	fclose(fp_in);
-    	fclose(fp_out);
+        if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
+            printf("Preprocessing step returned errors\n");
+        }
 
-    	return errors;
+        fclose(fp_in);
+        fclose(fp_out);
+
+        if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
+            printf("Could not open intermediate file 2.\n");
+            return 1;
+        }
+
+        strcpy(pass_zero_out, output_file);
+        strcat(pass_zero_out, ".mcr");
+
+        if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
+            printf("Could not open intermediate file 3.\n");
+            return 1;
+        }
+
+        if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
+            printf("Pass zero returned errors\n");
+        }
+
+        fclose(fp_in);
+        fclose(fp_out);
+
+        if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
+            printf("Could not open intermediate file 4.\n");
+            return 1;
+        }
+
+        strcpy(pass_one_out, output_file);
+        strcat(pass_one_out, ".o");
+
+        if ((fp_out = fopen(output_file, "w")) == NULL) {
+            printf("Could not open output file.\n");
+            return 1;
+        }
+
+        if(One_Pass(fp_in, fp_out, &line_table, &errors, argc)) {
+            printf("Pass one returned errors\n");
+        }
+
+        fclose(fp_in);
+        fclose(fp_out);
+
+        return errors;
     }
-    else {
-		if(!strcmp(argv[1], "-m")) {
-
-			strcpy(pass_pre_out, output_file);
-			strcat(pass_pre_out, ".pre");
-
-			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
-				printf("Could not open intermediate file 1.\n");
-				return 1;
-			}
-
-			if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    			printf("Preprocessing step returned errors\n");
-    		}
-
-			fclose(fp_in);
-    		fclose(fp_out);
-
-    		if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
-				printf("Could not open intermediate file 2.\n");
-				return 1;
-			}
-
-			if ((fp_out = fopen(output_file, "w")) == NULL) {
-				printf("Could not open output file.\n");
-				return 1;
-			}
-
-			if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
-    			printf("Pass zero returned errors\n");
-    		}
-
-			fclose(fp_in);
-			fclose(fp_out);
-
-			return errors;
-		}
-		else {
-			if (!strcmp(argv[1], "-o")) {
-
-				strcpy(pass_pre_out, output_file);
-				strcat(pass_pre_out, ".pre");
-
-				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
-					printf("Could not open intermediate file 1.\n");
-					return 1;
-				}
-
-				if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    				printf("Preprocessing step returned errors\n");
-    			}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
-					printf("Could not open intermediate file 2.\n");
-					return 1;
-				}
-
-				strcpy(pass_zero_out, output_file);
-				strcat(pass_zero_out, ".mcr");
-
-				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
-					printf("Could not open intermediate file 3.\n");
-					return 1;
-				}
-
-				if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
-    				printf("Pass zero returned errors\n");
-    			}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
-					printf("Could not open intermediate file 4.\n");
-					return 1;
-				}
-
-				if ((fp_out = fopen(output_file, "w")) == NULL) {
-					printf("Could not open output file.\n");
-					return 1;
-				}
-
-				if(One_Pass(fp_in, fp_out, &line_table, &errors)) {
-					printf("Pass one returned errors\n");
-				}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				return errors;
-			}
-			else {
-				printf("%s\n",usage);
-				return 1;
-			}
-		}
-	}
-
-    return 0;
 }
 
 /***************************** PREPROCESS *********************************/
@@ -708,7 +657,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
 /***************************************** PASS ONE **************************************/
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_files) {
 
 	char line[LINE_LENGTH];								//
 	char token1[TOKEN_LENGTH];							//
@@ -722,7 +671,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	int linePos = 0;									//
 	int i = 0;											//
 	int sec = 0;										//
-	int flabB = 0;                                      //
+	int flagB = 0;                                      //
 	int flagE = 0;                                      //
 	int offset = 0;										//
 	int lc[3] = {0, 0, 0};								//
@@ -941,7 +890,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								dir = i;
 							}
 						}
-                        // If token is either SECTION or SPACE or CONST
+                        // If token is a directive
 						if(dir > -1) {
 							// Checks whether directive is not SECTION
 							if(dir != 2) {
@@ -1208,6 +1157,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                                 printf("Line %d. Sintatic error: BEGIN is missing END\n", line_original);
                                                                 (*error_count)++;
                                                             }
+                                                            if (n_files < 3) {
+                                                                printf("Line %d. Semantic error: BEGIN used with single module\n", line_original);
+                                                                (*error_count)++;
+                                                            }
                                                         }
                                                         // Else, if BEGIN has arguments
                                                         else {
@@ -1244,6 +1197,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                                     printf("Line %d. Semantic error: END is missing BEGIN\n", line_original);
                                                                     (*error_count)++;
                                                                 }
+                                                                if (n_files < 3) {
+                                                                    printf("Line %d. Semantic error: END used with single module\n", line_original);
+                                                                    (*error_count)++;
+                                                                }
                                                             }
                                                             // Else, if END has arguments
                                                             else {
@@ -1277,16 +1234,20 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	}
 
     	if ((flagB != 1) || (flagE != 1)) {
-            if (flagB > flagE) {
-                printf("Line %d. Semantic error: Invalid token %s\n", line_original, token1);
+            if ((!flagB) && (!flagE) && (n_files > 2)) {
+                printf("Semantic error: File is missing BEGIN and END\n");
+                (*error_count)++;
+            }
+            else if (flagB > flagE) {
+                printf("Semantic error: BEGIN directive is missing END\n");
                 (*error_count)++;
             }
             else if (flagB < flagE) {
-                printf("Line %d. Semantic error: Invalid token %s\n", line_original, token1);
+                printf("Semantic error: END directive is missing BEGIN\n");
                 (*error_count)++;
             }
             else {
-                printf("Line %d. Lexical error: Invalid token %s\n", line_original, token1);
+                printf("Semantic error: Multiple BEGIN and END directives in one file\n");
                 (*error_count)++;
             }
     	}
