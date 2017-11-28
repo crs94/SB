@@ -130,7 +130,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 
 int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_files);
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_args);
 
 /********************************** MAIN ********************************/
 
@@ -657,7 +657,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
 /***************************************** PASS ONE **************************************/
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_files) {
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_args) {
 
 	char line[LINE_LENGTH];								//
 	char token1[TOKEN_LENGTH];							//
@@ -892,8 +892,8 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 						}
                         // If token is a directive
 						if(dir > -1) {
-							// Checks whether directive is not SECTION
-							if(dir != 2) {
+							// Checks whether directive is not SECTION, PUBLIC, EXTERN, BEGIN or END
+							if((dir < 2)) {
                                 // If directive is within TEXT
 								if(sec == 1) {
 									printf("Line %d. Semantic error: Directive inside TEXT section\n", line_original);
@@ -1084,7 +1084,19 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                 }
                                                 // If EXTERN has no arguments
                                                 if(i == 0) {
-                                                    // Adds label to USE
+                                                    // Search for label in symtable
+													GetToken2(line, token2, &linePos)
+													tmp_sym = SearchSym(symTable, token2);
+
+                                                    // IF label is not in table
+                                                    if (tmp_sym == NULL) {
+                                                    	// Add label and search again
+                                                    	// TODO Add AddSym
+                                                    	tmp_sym = SearchSym(symTable, token2);
+                                                    }
+                                                    // Modify ext to 1 and pub to 0
+                                                    tmp_sym->ext = 1;
+                                                    tmp_sym->pub = 0;
                                                 }
                                                 // Else, if EXTERN has arguments
                                                 else {
@@ -1112,20 +1124,22 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                     i = 0;
                                                     // Gets next token
                                                     while(GetToken2(line, token1, &linePos)) {
-                                                        if(i == 0) {
-                                                            // Checks whether token is valid
-                                                            if(IsValid(token1)) {
-                                                                // Add token to SymTable
-                                                                // and set the "flag" public
-                                                            }
-                                                            else {
-                                                                printf("Line %d. Lexical error: Invalid token\n", line_original);
-                                                                (*error_count)++;
-                                                            }
-                                                        }
-
                                                         i++;
                                                     }
+                                                    // if PUBLIC has one argument
+                                                    if(i == 1) {
+														// Checks whether token is valid
+														if(IsValid(token1)) {
+															// Search for label in symtable
+		                                                    // IF label is not in table
+		                                                    //		Add label and search again
+                                                  			// Modify ext to 1
+													    }
+													    else {
+													        printf("Line %d. Lexical error: Invalid token\n", line_original);
+													        (*error_count)++;
+													    }
+													}
                                                     // If no arguments follow PUBLIC
                                                     if(i == 0) {
                                                         printf("Line %d. Sintatic error: Expected one operand after PUBLIC\n", line_original);
@@ -1157,7 +1171,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                                 printf("Line %d. Sintatic error: BEGIN is missing END\n", line_original);
                                                                 (*error_count)++;
                                                             }
-                                                            if (n_files < 3) {
+                                                            if (n_args < 3) {
                                                                 printf("Line %d. Semantic error: BEGIN used with single module\n", line_original);
                                                                 (*error_count)++;
                                                             }
@@ -1197,7 +1211,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                                                     printf("Line %d. Semantic error: END is missing BEGIN\n", line_original);
                                                                     (*error_count)++;
                                                                 }
-                                                                if (n_files < 3) {
+                                                                if (n_args < 3) {
                                                                     printf("Line %d. Semantic error: END used with single module\n", line_original);
                                                                     (*error_count)++;
                                                                 }
@@ -1234,7 +1248,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     	}
 
     	if ((flagB != 1) || (flagE != 1)) {
-            if ((!flagB) && (!flagE) && (n_files > 2)) {
+            if ((!flagB) && (!flagE) && (n_args > 2)) {
                 printf("Semantic error: File is missing BEGIN and END\n");
                 (*error_count)++;
             }
