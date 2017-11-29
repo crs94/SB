@@ -47,13 +47,18 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
 	int defined;						// 1 if label definition was found. 0 otherwise
-	int ext;                            // 1 if label definition is extern. 0 otherwise
-	int pub;                            // 1 if label is public. 0 otherwise
-	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
 	int sec;							// Section in which symbol is defined
+	char type; 							// E for extern, p for public, n for normal
+	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
+	struct use_list_node *useTable;		// Tabela de usos
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
+
+struct use_list_node {					//Struct to store the use table
+	int address;
+	struct use_list_node *next;
+}
 
 struct output_line {					// Struct to hold output to be written to file until pass one finishes
 	int opcode;							// Opcode (0 for CONST, 15 for SPACE)
@@ -115,6 +120,8 @@ struct op_table_node *SearchOp(struct op_table_node *table, char *token);
 void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceLists(struct sym_table_node *node, int *error);
+
+void AddUse(struct use_list_node **node, int address);
 
 void AddLine(struct output_line *line, struct output_line **head);
 
@@ -819,6 +826,17 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
 										tmp_sym = symTable;
 									}
+
+									// If token in symTable is extern
+									if (tmp_sym->type == 'e') {
+										// Add address to use table
+										AddUse(&tmp_sym->useTable, lc[sec]);
+
+										// If use table have not been initialized before
+										if (tmp_sym->useTable == NULL) {
+											tmp_sym->useTable = tmp_use;
+										}
+									}
 								}
 								else {
 									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_original, tmp_op->name);
@@ -959,30 +977,30 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									i = 0;
 									// Gets next token in line
 									while(GetToken2(line, token1, &linePos)) {
-										if(i == 0) {
-                                            // If token is an hexadecimal number
-											if(IsHex(token1)) {
-												offset = HexToInt(token1);
+										i++;
+									}
+									if(i == 0) {
+                                        // If token is an hexadecimal number
+										if(IsHex(token1)) {
+											offset = HexToInt(token1);
+											lc[2]++;
+											lineOut->opcode = 0;
+											lineOut->op[0] = offset;
+										}
+                                        // Else, if token is a number
+										else {
+											if(IsNumber(token1)) {
+												offset = atoi(token1);
 												lc[2]++;
 												lineOut->opcode = 0;
 												lineOut->op[0] = offset;
 											}
-                                            // Else, if token is a number
+											// Else, if token is neither a decimal nor an hexadecimal
 											else {
-												if(IsNumber(token1)) {
-													offset = atoi(token1);
-													lc[2]++;
-													lineOut->opcode = 0;
-													lineOut->op[0] = offset;
-												}
-												// Else, if token is neither a decimal nor an hexadecimal
-												else {
-													printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
-													(*error_count)++;
-												}
+												printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
+												(*error_count)++;
 											}
 										}
-										i++;
 									}
 									// If CONST has no arguments
 									if(i == 0) {
@@ -1082,18 +1100,11 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     // If EXTERN has no arguments
                                     if(i == 0) {
                                         // Search for label in symtable
-										GetToken2(line, token2, &linePos)
-										tmp_sym = SearchSym(symTable, token2);
-
-                                        // IF label is not in table
-                                        if (tmp_sym == NULL) {
-                                        	// Add label and search again
-                                        	// TODO Add AddSym
-                                        	tmp_sym = SearchSym(symTable, token2);
-                                        }
-                                        // Modify ext to 1 and pub to 0
-                                        tmp_sym->ext = 1;
-                                        tmp_sym->pub = 0;
+                                        linePos = 0;
+										GetToken2(line, token1, &linePos)
+										tmp_sym = SearchSym(symTable, token1);
+										// Modify label type to extern
+										tmp_sym->type = 'e';
                                     }
                                     // Else, if EXTERN has arguments
                                     else {
@@ -1126,10 +1137,17 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     if(i == 1) {
 										// Checks whether token is valid
 										if(IsValid(token1)) {
-											// Search for label in symtable
-                                            // IF label is not in table
-                                            //		Add label and search again
-                                  			// Modify ext to 1
+											// Search for token in symtable
+											tmp_sym = SearchSym(symTable, token1);
+
+                                            // If token is not in table
+                                            if (tmp_sym == NULL) {
+                                            	// Add label
+												AddSym(&symTable, token1, 0, 0, sec);
+												tmp_sym = symTable;
+                                            }
+                                            // Modify label type to public
+											tmp_sym->type = 'p';                                  			
 									    }
 									    else {
 									        printf("Line %d. Lexical error: Invalid token\n", line_original);
@@ -1162,8 +1180,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     }
                                     // If BEGIN has no arguments
                                     if(i == 0) {
+                                        // Checks whether there are multiple BEGINs
                                         if (++flagB > 1) {
-                                            printf("Line %d. Sintatic error: BEGIN is missing END\n", line_original);
+                                            printf("Line %d. Semantic error: Multiple BEGIN directives in file\n", line_original);
                                             (*error_count)++;
                                         }
                                         if (n_args < 3) {
@@ -1180,7 +1199,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     }
                                 }
                                 else {
-                                    printf("Line %d. Sintatic error: Expected one label before directive EXTERN\n", line_original);
+                                    printf("Line %d. Sintatic error: Expected one label before directive BEGIN\n", line_original);
                                     (*error_count)++;
                                 }
                             }
@@ -1200,9 +1219,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     }
                                     // If no arguments follow END
                                     if(i == 0) {
-                                        // Checks whether the END has no BEGIN
-                                        if (++flagE < 0) {
-                                            printf("Line %d. Semantic error: END is missing BEGIN\n", line_original);
+                                        // Checks whether there are multiple ENDs
+                                        if (++flagE > 1) {
+                                            printf("Line %d. Semantic error: Multiple END directives in file\n", line_original);
                                             (*error_count)++;
                                         }
                                         if (n_args < 3) {
@@ -1505,6 +1524,14 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 		}
 		temp = temp->next;
 	}
+}
+
+// Found an extern operand and need to include it in use_list. Includes at the front of list
+void AddUse(struct use_list_node **node, int address) {
+	struct use_list_node *new = (struct use_list_node*)malloc(sizeof(struct use_list_node));
+	new->address = address;
+	new->next = *node;
+	*node = new;
 }
 
 /*
