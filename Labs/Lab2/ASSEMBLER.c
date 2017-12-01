@@ -47,10 +47,17 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
 	int defined;						// 1 if label definition was found. 0 otherwise
-	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
 	int sec;							// Section in which symbol is defined
+	char type; 							// E for extern, p for public, n for normal
+	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
+	struct use_list_node *useTable;		// Tabela de usos
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
+};
+
+struct use_list_node {					//Struct to store the use table
+	int address;
+	struct use_list_node *next;
 };
 
 struct output_line {					// Struct to hold output to be written to file until pass one finishes
@@ -114,6 +121,8 @@ void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceLists(struct sym_table_node *node, int *error);
 
+void AddUse(struct use_list_node **node, int address);
+
 void AddLine(struct output_line *line, struct output_line **head);
 
 void DeleteOutputLines(struct output_line *first);
@@ -128,153 +137,103 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 
 int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_args);
 
 /********************************** MAIN ********************************/
 
 int main(int argc, char *argv[]) {
 
 	// Error message displayed if wrong arguments are passed to the program
-	char usage[] = "\n\nUsage: ./assembler -mode myprogram.asm myprogram.extension\nif mode = \"-p\" preprocessing only. extension = \".pre\"\nif mode = \"-m\" expands macros. extension = \".mcr\"\nif mode = \"-o\" performs complete assembly. extension = \".o\"\n";
+	char usage[] = "\n\nUsage: ./assembler module1.asm module2.asm module3.asm\n";
 
-	char *input_file = argv[2];				// Name of input file
-	char *output_file = argv[3];			// Name of output file
+	char output_file[TOKEN_LENGTH];         // Name of output file
+	char *p_str;                            // Pointer for '.asm' within string
 	char pass_pre_out[TOKEN_LENGTH];		// Name of output file from preprocessing step
 	char pass_zero_out[TOKEN_LENGTH];		// Name of output file from pass zero
+	char pass_one_out[TOKEN_LENGTH];		// Name of output file from pass one
 	int errors = 0;							// Error counting
+	int n;                                  // Counter of files
 	FILE *fp_in = NULL;						// Pointer to input files
 	FILE *fp_out = NULL;					// Pointer to output files
 	struct fileLines *line_table = NULL;	// Pointer to beginning of lines table
 
 
-	if(argc != 4) {
+	if((argc < 2) || (argc > 4)) {
 		printf("%s\n",usage);
 		return 1;
 	}
 
-    if ((fp_in = fopen(input_file, "r")) == NULL) {
-		printf("Input file not found.\n");
-		return 1;
-	}
+    for (n = 0; n < argc - 1; n++) {
+            printf("%d -> %s\n\n", argc, argv[n +1]);
+        if ((fp_in = fopen(argv[n + 1], "r")) == NULL) {
+            printf("Input file not found.\n");
+            return 1;
+        }
 
-    if(!strcmp(argv[1], "-p")) {
+        strcpy(output_file, argv[n + 1]);
+        p_str = strstr(output_file, ".asm");
+        *p_str = '\0';
+        printf("%s\n", output_file);
 
-    	if ((fp_out = fopen(output_file, "w")) == NULL) {
-			printf("Could not open output file.\n");
-			return 1;
-		}
+        strcpy(pass_pre_out, output_file);
+        strcat(pass_pre_out, ".pre");
 
-    	if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    		printf("Preprocessing step returned errors\n");
-    	}
+        if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
+            printf("Could not open intermediate file 1.\n");
+            return 1;
+        }
 
-    	fclose(fp_in);
-    	fclose(fp_out);
+        if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
+            printf("Preprocessing step returned errors\n");
+        }
 
-    	return errors;
+        fclose(fp_in);
+        fclose(fp_out);
+
+        if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
+            printf("Could not open intermediate file 2.\n");
+            return 1;
+        }
+
+        strcpy(pass_zero_out, output_file);
+        strcat(pass_zero_out, ".mcr");
+
+        if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
+            printf("Could not open intermediate file 3.\n");
+            return 1;
+        }
+
+        if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
+            printf("Pass zero returned errors\n");
+        }
+
+        fclose(fp_in);
+        fclose(fp_out);
+
+        if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
+            printf("Could not open intermediate file 4.\n");
+            return 1;
+        }
+
+        strcpy(pass_one_out, output_file);
+        strcat(pass_one_out, ".o");
+
+        if ((fp_out = fopen(output_file, "w")) == NULL) {
+            printf("Could not open output file.\n");
+            return 1;
+        }
+
+        if(One_Pass(fp_in, fp_out, &line_table, &errors, argc)) {
+            printf("Pass one returned errors\n");
+        }
+
+        fclose(fp_in);
+        fclose(fp_out);
+
+        //if (errors != 0) return errors;
     }
-    else {
-		if(!strcmp(argv[1], "-m")) {
 
-			strcpy(pass_pre_out, output_file);
-			strcat(pass_pre_out, ".pre");
-
-			if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
-				printf("Could not open intermediate file 1.\n");
-				return 1;
-			}
-
-			if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    			printf("Preprocessing step returned errors\n");
-    		}
-
-			fclose(fp_in);
-    		fclose(fp_out);
-
-    		if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
-				printf("Could not open intermediate file 2.\n");
-				return 1;
-			}
-
-			if ((fp_out = fopen(output_file, "w")) == NULL) {
-				printf("Could not open output file.\n");
-				return 1;
-			}
-
-			if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
-    			printf("Pass zero returned errors\n");
-    		}
-
-			fclose(fp_in);
-			fclose(fp_out);
-
-			return errors;
-		}
-		else {
-			if (!strcmp(argv[1], "-o")) {
-
-				strcpy(pass_pre_out, output_file);
-				strcat(pass_pre_out, ".pre");
-
-				if ((fp_out = fopen(pass_pre_out, "w")) == NULL) {
-					printf("Could not open intermediate file 1.\n");
-					return 1;
-				}
-
-				if(Preprocess(fp_in, fp_out, &line_table, &errors)) {
-    				printf("Preprocessing step returned errors\n");
-    			}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
-					printf("Could not open intermediate file 2.\n");
-					return 1;
-				}
-
-				strcpy(pass_zero_out, output_file);
-				strcat(pass_zero_out, ".mcr");
-
-				if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
-					printf("Could not open intermediate file 3.\n");
-					return 1;
-				}
-
-				if(Pass_Zero(fp_in, fp_out, &line_table, &errors)) {
-    				printf("Pass zero returned errors\n");
-    			}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
-					printf("Could not open intermediate file 4.\n");
-					return 1;
-				}
-
-				if ((fp_out = fopen(output_file, "w")) == NULL) {
-					printf("Could not open output file.\n");
-					return 1;
-				}
-
-				if(One_Pass(fp_in, fp_out, &line_table, &errors)) {
-					printf("Pass one returned errors\n");
-				}
-
-				fclose(fp_in);
-				fclose(fp_out);
-
-				return errors;
-			}
-			else {
-				printf("%s\n",usage);
-				return 1;
-			}
-		}
-	}
-
-    return 0;
+    return errors;
 }
 
 /***************************** PREPROCESS *********************************/
@@ -708,7 +667,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
 /***************************************** PASS ONE **************************************/
 
-int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
+int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count, int n_args) {
 
 	char line[LINE_LENGTH];								//
 	char token1[TOKEN_LENGTH];							//
@@ -722,7 +681,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	int linePos = 0;									//
 	int i = 0;											//
 	int sec = 0;										//
-	int flabB = 0;                                      //
+	int flagB = 0;                                      //
 	int flagE = 0;                                      //
 	int offset = 0;										//
 	int lc[3] = {0, 0, 0};								//
@@ -736,6 +695,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	struct output_line *lineOut = NULL;					//
 	struct sym_table_node *symTable = NULL;				//
 	struct sym_table_node *tmp_sym = NULL;				//
+	struct use_table_node *tmp_use = NULL;
 	struct fileLines *tmp_line = NULL;					//
 	struct op_table_node *tmp_op = NULL;				//
 
@@ -870,6 +830,17 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
 										tmp_sym = symTable;
 									}
+
+									// If token in symTable is extern
+									/*if (tmp_sym->type == 'e') {
+										// Add address to use table
+										AddUse(&tmp_sym->useTable, lc[sec]);
+
+										// If use table have not been initialized before
+										if (tmp_sym->useTable == NULL) {
+											tmp_sym->useTable = tmp_use;
+										}
+									}*/
 								}
 								else {
 									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_original, tmp_op->name);
@@ -941,10 +912,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								dir = i;
 							}
 						}
-                        // If token is either SECTION or SPACE or CONST
+                        // If token is a directive
 						if(dir > -1) {
-							// Checks whether directive is not SECTION
-							if(dir != 2) {
+							// Checks whether directive is not SECTION, PUBLIC, EXTERN, BEGIN or END
+							if((dir < 2)) {
                                 // If directive is within TEXT
 								if(sec == 1) {
 									printf("Line %d. Semantic error: Directive inside TEXT section\n", line_original);
@@ -1004,268 +975,285 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 							}
 
 							// Else, if directive is CONST
-							else {
-								if(dir == 1) {
-									// Checks whether CONST follows a label
-									if(label_count == 1) {
-										i = 0;
-										// Gets next token in line
-										while(GetToken2(line, token1, &linePos)) {
-											if(i == 0) {
-                                                // If token is an hexadecimal number
-												if(IsHex(token1)) {
-													offset = HexToInt(token1);
-													lc[2]++;
-													lineOut->opcode = 0;
-													lineOut->op[0] = offset;
-												}
-                                                // Else, if token is a number
-												else {
-													if(IsNumber(token1)) {
-														offset = atoi(token1);
-														lc[2]++;
-														lineOut->opcode = 0;
-														lineOut->op[0] = offset;
-													}
-													// Else, if token is neither a decimal nor an hexadecimal
-													else {
-														printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
-														(*error_count)++;
-													}
-												}
-											}
-											i++;
+							else if(dir == 1) {
+								// Checks whether CONST follows a label
+								if(label_count == 1) {
+									i = 0;
+									// Gets next token in line
+									while(GetToken2(line, token1, &linePos)) {
+										i++;
+									}
+									if(i == 0) {
+                                        // If token is an hexadecimal number
+										if(IsHex(token1)) {
+											offset = HexToInt(token1);
+											lc[2]++;
+											lineOut->opcode = 0;
+											lineOut->op[0] = offset;
 										}
-										// If CONST has no arguments
-										if(i == 0) {
-											printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
-											(*error_count)++;
-										}
-										// Else, if CONST has more than one argument
+                                        // Else, if token is a number
 										else {
-											if(i > 1) {
-												printf("Line %d. Sintatic error: Too many operands in CONST\n", line_original);
+											if(IsNumber(token1)) {
+												offset = atoi(token1);
+												lc[2]++;
+												lineOut->opcode = 0;
+												lineOut->op[0] = offset;
+											}
+											// Else, if token is neither a decimal nor an hexadecimal
+											else {
+												printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 												(*error_count)++;
 											}
 										}
 									}
-									else {
-										printf("Line %d. Sintatic error: Expected one label before directive CONST\n", line_original);
+									// If CONST has no arguments
+									if(i == 0) {
+										printf("Line %d. Sintatic error: Expected a number after CONST\n", line_original);
 										(*error_count)++;
 									}
-								}
-
-								// Else, if directive is SECTION
-								else {
-									if(dir == 2) {
-                                        // Checks whether the line has a label
-										if(label_count > 0) {
-											printf("Line %d. Sintatic error: Label before SECTION\n", line_original);
+									// Else, if CONST has more than one argument
+									else {
+										if(i > 1) {
+											printf("Line %d. Sintatic error: Too many operands in CONST\n", line_original);
 											(*error_count)++;
 										}
-										else {
-											i = 0;
-                                            // Gets next token
-											while(GetToken2(line, token1, &linePos)) {
-												if(i == 0) {
-                                                    // Checks whether token is valid
-													if(IsValid(token1)) {
-													    // If token is TEXT
-														if(!strcmp(token1, "TEXT")) {
-														    // If not yet inside of TEXT
-															if(sec != 1) {
-																sec = 1;
-															}
-                                                            else {
-																printf("Line %d. Semantic error: More than one TEXT section\n", line_original);
-																(*error_count)++;
-															}
-														}
-														// Else, if token is DATA
-														else {
-															if(!strcmp(token1, "DATA")) {
-																// If not yet inside of DATA
-																if(sec != 2) {
-																	sec = 2;
-																}
-																else {
-																	printf("Line %d. Semantic error: More than one DATA section\n", line_original);
-																	(*error_count)++;
-																}
-															}
-															// Else, if neither TEXT nor DATA
-															else {
-																printf("Line %d. Sintatic error: Invalid operand in directive SECTION\n",line_original);
-																(*error_count)++;
-															}
-														}
+									}
+								}
+								else {
+									printf("Line %d. Sintatic error: Expected one label before directive CONST\n", line_original);
+									(*error_count)++;
+								}
+							}
+
+							// Else, if directive is SECTION
+							else if(dir == 2) {
+                                // Checks whether the line has a label
+								if(label_count > 0) {
+									printf("Line %d. Sintatic error: Label before SECTION\n", line_original);
+									(*error_count)++;
+								}
+								else {
+									i = 0;
+                                    // Gets next token
+									while(GetToken2(line, token1, &linePos)) {
+										if(i == 0) {
+                                            // Checks whether token is valid
+											if(IsValid(token1)) {
+											    // If token is TEXT
+												if(!strcmp(token1, "TEXT")) {
+												    // If not yet inside of TEXT
+													if(sec != 1) {
+														sec = 1;
 													}
-													else {
-														printf("Line %d. Lexical error: Invalido token\n", line_original);
+                                                    else {
+														printf("Line %d. Semantic error: More than one TEXT section\n", line_original);
 														(*error_count)++;
 													}
 												}
-
-												i++;
-											}
-											// If no arguments follow SECTION
-											if(i == 0) {
-												printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
-												(*error_count)++;
-											}
-											// Else, if SECTION has more than one argument
-											else {
-												if(i > 1) {
-													printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
-													(*error_count)++;
+												// Else, if token is DATA
+												else {
+													if(!strcmp(token1, "DATA")) {
+														// If not yet inside of DATA
+														if(sec != 2) {
+															sec = 2;
+														}
+														else {
+															printf("Line %d. Semantic error: More than one DATA section\n", line_original);
+															(*error_count)++;
+														}
+													}
+													// Else, if neither TEXT nor DATA
+													else {
+														printf("Line %d. Sintatic error: Invalid operand in directive SECTION\n",line_original);
+														(*error_count)++;
+													}
 												}
 											}
+											else {
+												printf("Line %d. Lexical error: Invalido token\n", line_original);
+												(*error_count)++;
+											}
+										}
+
+										i++;
+									}
+									// If no arguments follow SECTION
+									if(i == 0) {
+										printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
+										(*error_count)++;
+									}
+									// Else, if SECTION has more than one argument
+									else {
+										if(i > 1) {
+											printf("Line %d. Sintatic error: Expected one operand after SECTION\n", line_original);
+											(*error_count)++;
 										}
 									}
-
-                                    // Else, if directive is EXTERN
-                                    else {
-                                        if(dir == 3) {
-                                            // Checks whether CONST follows a label
-                                            if(label_count == 1) {
-                                                i = 0;
-                                                // Gets next token in line
-                                                while(GetToken2(line, token1, &linePos)) {
-                                                    i++;
-                                                }
-                                                // If EXTERN has no arguments
-                                                if(i == 0) {
-                                                    // Adds label to USE
-                                                }
-                                                // Else, if EXTERN has arguments
-                                                else {
-                                                    if(i > 0) {
-                                                        printf("Line %d. Sintatic error: Too many operands in EXTERN\n", line_original);
-                                                        (*error_count)++;
-                                                    }
-                                                }
-                                            }
-                                            else {
-                                                printf("Line %d. Sintatic error: Expected one label before directive EXTERN\n", line_original);
-                                                (*error_count)++;
-                                            }
-                                        }
-
-                                        // Else, if directive is PUBLIC
-                                        else {
-                                            if(dir == 4) {
-                                                // Checks whether the line has a label
-                                                if(label_count > 0) {
-                                                    printf("Line %d. Sintatic error: Label before PUBLIC\n", line_original);
-                                                    (*error_count)++;
-                                                }
-                                                else {
-                                                    i = 0;
-                                                    // Gets next token
-                                                    while(GetToken2(line, token1, &linePos)) {
-                                                        if(i == 0) {
-                                                            // Checks whether token is valid
-                                                            if(IsValid(token1)) {
-                                                                // Add token to SymTable
-                                                                // and set the "flag" public
-                                                            }
-                                                            else {
-                                                                printf("Line %d. Lexical error: Invalid token\n", line_original);
-                                                                (*error_count)++;
-                                                            }
-                                                        }
-
-                                                        i++;
-                                                    }
-                                                    // If no arguments follow PUBLIC
-                                                    if(i == 0) {
-                                                        printf("Line %d. Sintatic error: Expected one operand after PUBLIC\n", line_original);
-                                                        (*error_count)++;
-                                                    }
-                                                    // Else, if PUBLIC has more than one argument
-                                                    else {
-                                                        if(i > 1) {
-                                                            printf("Line %d. Sintatic error: Expected one operand after PUBLIC\n", line_original);
-                                                            (*error_count)++;
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            // Else, if directive is BEGIN
-                                            else {
-                                                if(dir == 5) {
-                                                    // Checks whether BEGIN follows a label
-                                                    if(label_count == 1) {
-                                                        i = 0;
-                                                        // Gets next token in line
-                                                        while(GetToken2(line, token1, &linePos)) {
-                                                            i++;
-                                                        }
-                                                        // If BEGIN has no arguments
-                                                        if(i == 0) {
-                                                            if (++flagB > 1) {
-                                                                printf("Line %d. Sintatic error: BEGIN is missing END\n", line_original);
-                                                                (*error_count)++;
-                                                            }
-                                                        }
-                                                        // Else, if BEGIN has arguments
-                                                        else {
-                                                            if(i > 0) {
-                                                                printf("Line %d. Sintatic error: Too many operands in BEGIN\n", line_original);
-                                                                (*error_count)++;
-                                                            }
-                                                        }
-                                                    }
-                                                    else {
-                                                        printf("Line %d. Sintatic error: Expected one label before directive EXTERN\n", line_original);
-                                                        (*error_count)++;
-                                                    }
-                                                }
-
-                                                // Else, if directive is END
-                                                else {
-                                                    if(dir == 6) {
-                                                        // Checks whether the line has a label
-                                                        if(label_count > 0) {
-                                                            printf("Line %d. Sintatic error: Label before END\n", line_original);
-                                                            (*error_count)++;
-                                                        }
-                                                        else {
-                                                            i = 0;
-                                                            // Gets next token
-                                                            while(GetToken2(line, token1, &linePos)) {
-                                                                i++;
-                                                            }
-                                                            // If no arguments follow END
-                                                            if(i == 0) {
-                                                                // Checks whether the END has no BEGIN
-                                                                if (++flagE < 0) {
-                                                                    printf("Line %d. Semantic error: END is missing BEGIN\n", line_original);
-                                                                    (*error_count)++;
-                                                                }
-                                                            }
-                                                            // Else, if END has arguments
-                                                            else {
-                                                                if(i > 1) {
-                                                                    printf("Line %d. Sintatic error: Expected no operand after END\n", line_original);
-                                                                    (*error_count)++;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-
-                                                    // Else, if neither instruction nor directive follow label
-                                                    else {
-                                                        printf("Line %d. Sintatic error: Token %s. Expected instruction or directive\n", line_original, token1);
-                                                        (*error_count)++;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
 								}
 							}
+
+                            // Else, if directive is EXTERN
+                            else if(dir == 3) {
+                                // Checks whether CONST follows a label
+                                if(label_count == 1) {
+                                    i = 0;
+                                    // Gets next token in line
+                                    while(GetToken2(line, token1, &linePos)) {
+                                        i++;
+                                    }
+                                    // If EXTERN has no arguments
+                                    if(i == 0) {
+                                        /*// Search for label in symtable
+                                        linePos = 0;
+										GetToken2(line, token1, &linePos);
+										tmp_sym = SearchSym(symTable, token1);
+										// Modify label type to extern
+										tmp_sym->type = 'e';*/
+										printf("Extern!\n");
+                                    }
+                                    // Else, if EXTERN has arguments
+                                    else {
+                                        if(i > 0) {
+                                            printf("Line %d. Sintatic error: Too many operands in EXTERN\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                }
+                                else {
+                                    printf("Line %d. Sintatic error: Expected one label before directive EXTERN\n", line_original);
+                                    (*error_count)++;
+                                }
+                            }
+
+                            // Else, if directive is PUBLIC
+                            else if(dir == 4) {
+                                // Checks whether the line has a label
+                                if(label_count > 0) {
+                                    printf("Line %d. Sintatic error: Label before PUBLIC\n", line_original);
+                                    (*error_count)++;
+                                }
+                                else {
+                                    i = 0;
+                                    // Gets next token
+                                    while(GetToken2(line, token1, &linePos)) {
+                                        i++;
+                                    }
+                                    // if PUBLIC has one argument
+                                    if(i == 1) {
+										// Checks whether token is valid
+										if(IsValid(token1)) {
+											// Search for token in symtable
+											tmp_sym = SearchSym(symTable, token1);
+
+                                            // If token is not in table
+                                            if (tmp_sym == NULL) {
+                                            	// Add label
+												AddSym(&symTable, token1, 0, 0, sec);
+												tmp_sym = symTable;
+                                            }
+                                            // Modify label type to public
+											tmp_sym->type = 'p';
+											printf("Public!\n");
+									    }
+									    else {
+									        printf("Line %d. Lexical error: Invalid token\n", line_original);
+									        (*error_count)++;
+									    }
+									}
+                                    // If no arguments follow PUBLIC
+                                    if(i == 0) {
+                                        printf("Line %d. Sintatic error: Expected one operand after PUBLIC\n", line_original);
+                                        (*error_count)++;
+                                    }
+                                    // Else, if PUBLIC has more than one argument
+                                    else {
+                                        if(i > 1) {
+                                            printf("Line %d. Sintatic error: Expected one operand after PUBLIC\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Else, if directive is BEGIN
+                            else if(dir == 5) {
+                                // Checks whether BEGIN follows a label
+                                if(label_count == 1) {
+                                    i = 0;
+                                    // Gets next token in line
+                                    while(GetToken2(line, token1, &linePos)) {
+                                        i++;
+                                    }
+                                    // If BEGIN has no arguments
+                                    if(i == 0) {
+                                        // Checks whether there are multiple BEGINs
+                                        printf("Begin!\n");
+                                        flagB++;
+                                        if (flagB > 1) {
+                                            printf("Line %d. Semantic error: Multiple BEGIN directives in file\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                        if (n_args < 3) {
+                                            printf("Line %d. Semantic error: BEGIN used with single module\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                    // Else, if BEGIN has arguments
+                                    else {
+                                        if(i > 0) {
+                                            printf("Line %d. Sintatic error: Too many operands in BEGIN\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                }
+                                else {
+                                    printf("Line %d. Sintatic error: Expected one label before directive BEGIN\n", line_original);
+                                    (*error_count)++;
+                                }
+                            }
+
+                            // Else, if directive is END
+                            else if(dir == 6) {
+                                // Checks whether the line has a label
+                                if(label_count > 0) {
+                                    printf("Line %d. Sintatic error: Label before END\n", line_original);
+                                    (*error_count)++;
+                                }
+                                else {
+                                    i = 0;
+                                    // Gets next token
+                                    while(GetToken2(line, token1, &linePos)) {
+                                        i++;
+                                    }
+                                    // If no arguments follow END
+                                    if(i == 0) {
+                                        // Checks whether there are multiple ENDs
+                                        printf("End!\n");
+                                        flagE++;
+                                        if (flagE > 1) {
+                                            printf("Line %d. Semantic error: Multiple END directives in file\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                        if (n_args < 3) {
+                                            printf("Line %d. Semantic error: END used with single module\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                    // Else, if END has arguments
+                                    else {
+                                        if(i > 1) {
+                                            printf("Line %d. Sintatic error: Expected no operand after END\n", line_original);
+                                            (*error_count)++;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Else, if neither instruction nor directive follow label
+                            else {
+                                printf("Line %d. Sintatic error: Token %s. Expected instruction or directive\n", line_original, token1);
+                                (*error_count)++;
+                            }
 						}
 					}
 				}
@@ -1274,21 +1262,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 					(*error_count)++;
 				}
     		}
-    	}
-
-    	if ((flagB != 1) || (flagE != 1)) {
-            if (flagB > flagE) {
-                printf("Line %d. Semantic error: Invalid token %s\n", line_original, token1);
-                (*error_count)++;
-            }
-            else if (flagB < flagE) {
-                printf("Line %d. Semantic error: Invalid token %s\n", line_original, token1);
-                (*error_count)++;
-            }
-            else {
-                printf("Line %d. Lexical error: Invalid token %s\n", line_original, token1);
-                (*error_count)++;
-            }
     	}
 
     	if(lineOut->opcode != -1) {
@@ -1305,6 +1278,26 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 			free(lineOut);
 		}
     }
+
+    if ((flagB != 1) || (flagE != 1)) {
+        if ((flagB == 0) && (flagE == 0) && (n_args > 2)) {
+            printf("Semantic error: File is missing BEGIN and END\n");
+            (*error_count)++;
+        }
+        else if (flagB > flagE) {
+            printf("Semantic error: BEGIN directive is missing END\n");
+            (*error_count)++;
+        }
+        else if (flagB < flagE) {
+            printf("Semantic error: END directive is missing BEGIN\n");
+            (*error_count)++;
+        }
+        else {
+            printf("Semantic error: Multiple BEGIN and END directives in one file\n");
+            (*error_count)++;
+        }
+    }
+
     printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
     // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
@@ -1542,6 +1535,14 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 		}
 		temp = temp->next;
 	}
+}
+
+// Found an extern operand and need to include it in use_list. Includes at the front of list
+void AddUse(struct use_list_node **node, int address) {
+	struct use_list_node *new = (struct use_list_node*)malloc(sizeof(struct use_list_node));
+	new->address = address;
+	new->next = *node;
+	*node = new;
 }
 
 /*
