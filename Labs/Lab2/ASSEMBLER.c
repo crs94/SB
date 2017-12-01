@@ -58,7 +58,7 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 struct use_list_node {					//Struct to store the use table
 	int address;
 	struct use_list_node *next;
-}
+};
 
 struct output_line {					// Struct to hold output to be written to file until pass one finishes
 	int opcode;							// Opcode (0 for CONST, 15 for SPACE)
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 	// Error message displayed if wrong arguments are passed to the program
 	char usage[] = "\n\nUsage: ./assembler module1.asm module2.asm module3.asm\n";
 
-	char *output_file;                      // Name of output file
+	char output_file[TOKEN_LENGTH];         // Name of output file
 	char *p_str;                            // Pointer for '.asm' within string
 	char pass_pre_out[TOKEN_LENGTH];		// Name of output file from preprocessing step
 	char pass_zero_out[TOKEN_LENGTH];		// Name of output file from pass zero
@@ -164,6 +164,7 @@ int main(int argc, char *argv[]) {
 	}
 
     for (n = 0; n < argc - 1; n++) {
+            printf("%d -> %s\n\n", argc, argv[n +1]);
         if ((fp_in = fopen(argv[n + 1], "r")) == NULL) {
             printf("Input file not found.\n");
             return 1;
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]) {
 
         strcpy(output_file, argv[n + 1]);
         p_str = strstr(output_file, ".asm");
-        strncpy (p_str, "", 1);
+        *p_str = '\0';
         printf("%s\n", output_file);
 
         strcpy(pass_pre_out, output_file);
@@ -229,8 +230,10 @@ int main(int argc, char *argv[]) {
         fclose(fp_in);
         fclose(fp_out);
 
-        return errors;
+        //if (errors != 0) return errors;
     }
+
+    return errors;
 }
 
 /***************************** PREPROCESS *********************************/
@@ -692,6 +695,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	struct output_line *lineOut = NULL;					//
 	struct sym_table_node *symTable = NULL;				//
 	struct sym_table_node *tmp_sym = NULL;				//
+	struct use_table_node *tmp_use = NULL;
 	struct fileLines *tmp_line = NULL;					//
 	struct op_table_node *tmp_op = NULL;				//
 
@@ -828,7 +832,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 									}
 
 									// If token in symTable is extern
-									if (tmp_sym->type == 'e') {
+									/*if (tmp_sym->type == 'e') {
 										// Add address to use table
 										AddUse(&tmp_sym->useTable, lc[sec]);
 
@@ -836,7 +840,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										if (tmp_sym->useTable == NULL) {
 											tmp_sym->useTable = tmp_use;
 										}
-									}
+									}*/
 								}
 								else {
 									printf("Line %d. Sintatic error: invalid number of operands in %s\n", line_original, tmp_op->name);
@@ -1099,12 +1103,13 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     }
                                     // If EXTERN has no arguments
                                     if(i == 0) {
-                                        // Search for label in symtable
+                                        /*// Search for label in symtable
                                         linePos = 0;
-										GetToken2(line, token1, &linePos)
+										GetToken2(line, token1, &linePos);
 										tmp_sym = SearchSym(symTable, token1);
 										// Modify label type to extern
-										tmp_sym->type = 'e';
+										tmp_sym->type = 'e';*/
+										printf("Extern!\n");
                                     }
                                     // Else, if EXTERN has arguments
                                     else {
@@ -1147,7 +1152,8 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 												tmp_sym = symTable;
                                             }
                                             // Modify label type to public
-											tmp_sym->type = 'p';                                  			
+											tmp_sym->type = 'p';
+											printf("Public!\n");
 									    }
 									    else {
 									        printf("Line %d. Lexical error: Invalid token\n", line_original);
@@ -1181,7 +1187,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     // If BEGIN has no arguments
                                     if(i == 0) {
                                         // Checks whether there are multiple BEGINs
-                                        if (++flagB > 1) {
+                                        printf("Begin!\n");
+                                        flagB++;
+                                        if (flagB > 1) {
                                             printf("Line %d. Semantic error: Multiple BEGIN directives in file\n", line_original);
                                             (*error_count)++;
                                         }
@@ -1220,7 +1228,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     // If no arguments follow END
                                     if(i == 0) {
                                         // Checks whether there are multiple ENDs
-                                        if (++flagE > 1) {
+                                        printf("End!\n");
+                                        flagE++;
+                                        if (flagE > 1) {
                                             printf("Line %d. Semantic error: Multiple END directives in file\n", line_original);
                                             (*error_count)++;
                                         }
@@ -1254,25 +1264,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     		}
     	}
 
-    	if ((flagB != 1) || (flagE != 1)) {
-            if ((!flagB) && (!flagE) && (n_args > 2)) {
-                printf("Semantic error: File is missing BEGIN and END\n");
-                (*error_count)++;
-            }
-            else if (flagB > flagE) {
-                printf("Semantic error: BEGIN directive is missing END\n");
-                (*error_count)++;
-            }
-            else if (flagB < flagE) {
-                printf("Semantic error: END directive is missing BEGIN\n");
-                (*error_count)++;
-            }
-            else {
-                printf("Semantic error: Multiple BEGIN and END directives in one file\n");
-                (*error_count)++;
-            }
-    	}
-
     	if(lineOut->opcode != -1) {
     		if(sec == 2) {
     			AddLine(lineOut, &head_data);
@@ -1287,6 +1278,26 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 			free(lineOut);
 		}
     }
+
+    if ((flagB != 1) || (flagE != 1)) {
+        if ((flagB == 0) && (flagE == 0) && (n_args > 2)) {
+            printf("Semantic error: File is missing BEGIN and END\n");
+            (*error_count)++;
+        }
+        else if (flagB > flagE) {
+            printf("Semantic error: BEGIN directive is missing END\n");
+            (*error_count)++;
+        }
+        else if (flagB < flagE) {
+            printf("Semantic error: END directive is missing BEGIN\n");
+            (*error_count)++;
+        }
+        else {
+            printf("Semantic error: Multiple BEGIN and END directives in one file\n");
+            (*error_count)++;
+        }
+    }
+
     printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
     // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
