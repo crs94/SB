@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 //#include<string.h>
 
 int main(int argc, char *argv[]) {
@@ -8,49 +9,62 @@ int main(int argc, char *argv[]) {
 	FILE *fp_out;
 	fpos_t fpos;
 	char *map;
+	char str_aux[12];
 	int acc;	// Accumulator
 	int pc;		// Program Counter
 	int size = 0;
-	int size_text = 0;
-	int size_data = 0;
-	int *chunks;
+	int size_available = 0;
+	int *chunk_sizes;
 	int *addresses;
 	int *memory;
 	int j;
 	int n;
+	int aux;
+	int i;
 
 	
 	n = atoi(argv[2]);
-	chunks = (int*)malloc(n*sizeof(int));
+	chunk_sizes = (int*)malloc(n*sizeof(int));
 	addresses = (int*)malloc(n*sizeof(int));
 	for(j = 0; j<n; j++) {
-		chunks[j] = atoi(argv[j+3])
-		size += chunks[j];
-		addresses[j] = atoi(argv[j+3+n])
+		chunk_sizes[j] = atoi(argv[j+3]);
+		size_available += chunk_sizes[j];
+		addresses[j] = atoi(argv[j+3+n]);
 	}
 	n = 0;
 	j = 0;
 	
-	fp_in = fopen(argv[1]);
-	fp_out = fopen(strcat(argv[1], ".im"));
+	if((fp_in = fopen(argv[1], "r")) == NULL) {
+		printf("Coudn't open input file!\n");
+        return 0;
+	}
+	if((fp_out = fopen(strcat(argv[1], ".im"), "w")) == NULL) {
+		printf("Coudn't open output file!\n");
+        return 0;
+	}
 	
-	fscanf(fp_in, "%d", size_text);
-	fscanf(fp_in, "%d", size_data);
+	fscanf(fp_in, "%d", &size);
+	printf("got size\n");
 	
-	if((size_text + size_data) > size) {
+	if(size > size_available) {
 		printf("OUT OF MEMORY - YOUR PROGRAM WILL NOT BE LOADED\n");
 		return 0;		
 	}
 	
-	map = (char*)malloc((size_text + size_data)*(sizeof(char)));
+	map = (char*)malloc(size*(sizeof(char)));
+	printf("got map\n");
 	fscanf(fp_in, "%s", map);
-	memory = (int*)malloc((size_text + size_data)*sizeof(int));
+	printf("got map\n");
+	memory = (int*)malloc(size*sizeof(int));
 	fgetpos(fp_in, &fpos);
 	
-	while(fscanf(fp_in, "%d", n) != EOF) {
+	printf("allocated\n");
+	
+	while(fscanf(fp_in, "%d", &n) != EOF) {
 		memory[j] = n;
 		j++;
 	}
+	printf("got memory\n");
 	// Gerar arquivo de saída e depois simular? E remover arquivo em caso de erro?
 	
 	//if(j < size) erro
@@ -117,26 +131,25 @@ int main(int argc, char *argv[]) {
 				j = n;
 				break;
 			default:
+				break;
 		}
 	}
 	printf("Finished simulation\n");
 	
 	fsetpos(fp_in, &fpos);	
 	j = 0;
-	while(fscanf(fp_in, "%d", n) != EOF) {
+	while(fscanf(fp_in, "%d", &n) != EOF) {
 		memory[j] = n;
 		j++;
 	}
-	
-	for(n = 0; n < size_text + size_data; n++) {
+
+	for(n = 0; n < size; n++) {
 		if(map[n] == '1') {
-			j = 0;
-			size = chunks[j];
-			while (memory[n] >= size) {
-				j++;
-				size += chunks[j];
+			aux = chunk_sizes[0];
+			for(i = 0; memory[n] > aux; i++) { 
+				aux += chunk_sizes[i+1];
 			}
-			memory[n] += (addresses[j] + chunks[j] - size);
+			memory[n] += addresses[i];
 		}
 		fprintf(fp_out, "%d ", memory[n]);
 	}
