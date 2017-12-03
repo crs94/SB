@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        strcpy(pass_zero_out, output_file);
+        /*strcpy(pass_zero_out, output_file);
         strcat(pass_zero_out, ".mcr");
 
         if ((fp_out = fopen(pass_zero_out, "w")) == NULL) {
@@ -213,12 +213,12 @@ int main(int argc, char *argv[]) {
         if ((fp_in = fopen(pass_zero_out, "r")) == NULL) {
             printf("Could not open intermediate file 4.\n");
             return 1;
-        }
+        }*/
 
         strcpy(pass_one_out, output_file);
         strcat(pass_one_out, ".o");
 
-        if ((fp_out = fopen(output_file, "w")) == NULL) {
+        if ((fp_out = fopen(pass_one_out, "w")) == NULL) {
             printf("Could not open output file.\n");
             return 1;
         }
@@ -573,7 +573,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
         /*
         * Else, if line has END directive
         */
-        else if ((!strcmp(line, "END\n")) || (!strcmp(line, " END\n"))) {
+        else if ((!strcmp(line, "ENDMACRO\n")) || (!strcmp(line, " ENDMACRO\n"))) {
             // Checks whether END happens within a MACRO
 		    if (inMacro) {
 		        tmpMDT = addMDT(&mdtTable_Head, line, lineo);
@@ -614,7 +614,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 
                     // If token1 is found on the MDT, found a MACRO
                     if(tmpMDT != NULL) {
-                        while (((strcmp(tmpMDT->line, "END")) && (strcmp(tmpMDT->line, "END ")) && (tmpMDT != NULL))) {
+                        while (((strcmp(tmpMDT->line, "ENDMACRO")) && (strcmp(tmpMDT->line, "ENDMACRO ")) && (tmpMDT != NULL))) {
                             fprintf(fout, "%s\n", tmpMDT->line);
                             linem = insertLines(*linesTable_Head, tmpMDT->lineNum, linem);
                             linec = linem;
@@ -651,7 +651,7 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
     // If some MACRO was not finished by the end of the code
     if (inMacro) {
     	printf("Pass zero: ");
-    	printf("Semantic Error: MACRO is missing END.\n");
+    	printf("Semantic Error: MACRO is missing ENDMACRO.\n");
     	(*error_count)++;
     }
 
@@ -717,8 +717,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 										};
 
     while(GetLine(fin, line)) {
-
-    	line_count++;
+        line_count++;
     	tmp_line = searchLines(*linesTable_Head, line_count);
     	line_original = tmp_line->lineNum;
     	label_count = 0;
@@ -1279,6 +1278,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 		}
     }
 
+    printf("BEGIN: %d END: %d\n", flagB, flagE);
     if ((flagB != 1) || (flagE != 1)) {
         if ((flagB == 0) && (flagE == 0) && (n_args > 2)) {
             printf("Semantic error: File is missing BEGIN and END\n");
@@ -1792,8 +1792,9 @@ int GetLine(FILE *fp, char *lineBuffer) {
 	int n = 0;	// Index of current position in lineBuffer
 
 	c = fgetc(fp);
+	if (c == EOF) return 0;
 	while ((c != '\n') && (n < 600) && (c != EOF) && (c != ';')) {
-		if (n == 0) {
+    	if (n == 0) {
 			// Ignores initial blanks
 			while ((c == ' ') || (c == '\t')) {
 				c = fgetc(fp);
@@ -1845,8 +1846,7 @@ int GetLine(FILE *fp, char *lineBuffer) {
 		lineBuffer[0] = '\0';
 	}
 
-	if (c != EOF) return 1;
-	return 0;
+	return 1;
 }
 
 /*
