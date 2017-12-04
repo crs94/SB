@@ -51,13 +51,25 @@ struct sym_table_node {					// Struct to store a node of the symbol table
 	int sec;							// Section in which symbol is defined
 	char type; 							// E for extern, p for public, n for normal
 	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
-	struct use_list_node *useTable;		// Tabela de usos
+	//struct use_list_node *useTable;		// Tabela de usos
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
-struct use_list_node {					//Struct to store the use table
+struct use_list_node {					// Struct to store the use table
 	int address;
 	struct use_list_node *next;
+};
+
+struct output_use {                     // Struct to store the use table
+    char label[TOKEN_LENGTH];           // Name of the label
+    int address;                        // Memory address where the exern label has been found throughout the code
+    struct output_use *next;            // Pointer to the next node in the use table
+};
+
+struct output_def {                     // Struct to store the definition table
+    char label[TOKEN_LENGTH];           // Name of the label
+    int address;                         // Address in which the public label was defined
+    struct output_def *next;            // Pointer to the next node in the definition table
 };
 
 struct output_line {					// Struct to hold output to be written to file until pass one finishes
@@ -121,7 +133,13 @@ void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceLists(struct sym_table_node *node, int *error);
 
-void AddUse(struct use_list_node **node, int address);
+void AddUse(struct output_use **node, char *name, int address);
+
+void DeleteUseTable(struct output_use *table);
+
+void AddDef(struct output_def **node, char *name, int address);
+
+void DeleteDefTable(struct output_def *table);
 
 void AddLine(struct output_line *line, struct output_line **head);
 
@@ -695,7 +713,9 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 	struct output_line *lineOut = NULL;					//
 	struct sym_table_node *symTable = NULL;				//
 	struct sym_table_node *tmp_sym = NULL;				//
-	struct use_table_node *tmp_use = NULL;
+	struct output_use *useTable = NULL;				    //
+	struct output_def *defTable = NULL;				    //
+	//struct output_use *tmp_use = NULL;
 	struct fileLines *tmp_line = NULL;					//
 	struct op_table_node *tmp_op = NULL;				//
 
@@ -760,6 +780,11 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 								tmp_sym->sec = sec;
 							}
 						}
+
+						// If the label is defined as public
+                        if (tmp_sym->type = 'p') {
+                            AddDef(&defTable, token1, lc[sec]);
+                        }
 						label_count++;
 					}
 					else {
@@ -813,16 +838,24 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 
 									// If token is in symTable
 									if(tmp_sym != NULL) {
+                                        // If token  has already been defined
                                         if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
 											lineOut->op[opr_count] = tmp_sym->address;
 										}
+
+                                        // Else, if token is yet to be defined
                                         else {
 											lineOut->op[opr_count] = -1;
 											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
 										}
+
+										// If the token is defined as extern
+                                        if (tmp_sym->type = 'e') {
+                                            AddUse(&useTable, token1, lc[sec]);
+                                        }
 									}
 
-									// Else, if token is yet to be defined
+									// Else, if token is yet to be added to the table
 									else {
 										AddSym(&symTable, token1, -1, 0, 0);
 										lineOut->op[opr_count] = -1;
@@ -1102,12 +1135,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                     }
                                     // If EXTERN has no arguments
                                     if(i == 0) {
-                                        /*// Search for label in symtable
-                                        linePos = 0;
-										GetToken2(line, token1, &linePos);
-										tmp_sym = SearchSym(symTable, token1);
-										// Modify label type to extern
-										tmp_sym->type = 'e';*/
+                                        // Modify label type to extern
+										tmp_sym->type = 'e';
+										// Ensure that the label address is set to 0
+										tmp_sym->address = 0;
 										printf("Extern!\n");
                                     }
                                     // Else, if EXTERN has arguments
@@ -1147,7 +1178,7 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
                                             // If token is not in table
                                             if (tmp_sym == NULL) {
                                             	// Add label
-												AddSym(&symTable, token1, 0, 0, sec);
+												AddSym(&symTable, token1, -1, 0, sec);
 												tmp_sym = symTable;
                                             }
                                             // Modify label type to public
@@ -1537,12 +1568,42 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 	}
 }
 
-// Found an extern operand and need to include it in use_list. Includes at the front of list
-void AddUse(struct use_list_node **node, int address) {
-	struct use_list_node *new = (struct use_list_node*)malloc(sizeof(struct use_list_node));
+// Found an extern operand and need to include it in use table. Includes at the front of list
+void AddUse(struct output_use **node, char *name, int address) {
+	struct output_use *new = (struct output_use*)malloc(sizeof(struct output_use));
+	strcpy(new->label, name);
 	new->address = address;
 	new->next = *node;
 	*node = new;
+}
+
+// Deletes Use Table
+void DeleteUseTable(struct output_use *table) {
+	struct output_use* tmp;
+    while(table != NULL) {
+    	tmp = table;
+    	table = table->next;
+    	free(tmp);
+    }
+}
+
+// Found an public label definition and need to include it in definition table. Includes at the front of list
+void AddDef(struct output_def **node, char *name, int address) {
+	struct output_def *new = (struct output_def*)malloc(sizeof(struct output_def));
+	strcpy(new->label, name);
+	new->address = address;
+	new->next = *node;
+	*node = new;
+}
+
+// Deletes Definition Table
+void DeleteDefTable(struct output_def *table) {
+	struct output_def* tmp;
+    while(table != NULL) {
+    	tmp = table;
+    	table = table->next;
+    	free(tmp);
+    }
 }
 
 /*
