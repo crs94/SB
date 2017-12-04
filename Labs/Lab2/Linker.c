@@ -13,14 +13,11 @@ struct table_node {
 	struct table_node *next;
 };
 
-int search_def_table(struct table_node *table, char *name) {
-	struct table_node *tmp = table;
-	while(tmp != NULL) {
-		if(!strcmp(tmp->name, name)) return tmp->value;
-		tmp = tmp->next;
-	}
-	return 0;
-}
+int search_def_table(struct table_node *table, char *name);
+
+void deleteTab (struct table_node *table);
+
+void deleteList (struct list_node *list);
 
 int main(int argc, char *argv[]) {
 
@@ -37,35 +34,40 @@ int main(int argc, char *argv[]) {
 	int size_U = 0;
 	int size_D = 0;
 	int size = 0;
+	int size_text = 0;
+	int size_data = 0;
 	int size_prev = 0;
 	int i = 0;
 	int n = 0;
 	char **map;
 	char header[3];
-	char name[101]; 
+	char name[101];
+
 
 	if ((fp_out = fopen(argv[1], "w")) == NULL) {
         printf("Coudn't open output file!\n");
         return 0;
     }
-    
+
     map = (char**)malloc((argc-1)*sizeof(char*));
 
 	for(i = 2; i < argc; i++) {
 		size_prev += size;
-		
+
 		if ((fp_in = fopen(argv[i], "r")) == NULL) {
 			printf("File %s not found.\n", argv[i]);
+			free(map);
 			return 0;
 		}
-		
+
 		while(fscanf(fp_in, "%s", header) != EOF) {
 			if(!strcmp(header, "N:")) {
 				fscanf(fp_in, "%s", name);
 				//testar se nome confere com argv[i]?
 			}
 			else if(!strcmp(header, "S:")) {
-				fscanf(fp_in, "%d", &size);
+				fscanf(fp_in, "%d %d", &size_text, &size_data);
+				size = size_text + size_data;
 			}
 			else if(!strcmp(header, "U:")) {
 				fscanf(fp_in, "%d", &size_U);
@@ -94,7 +96,7 @@ int main(int argc, char *argv[]) {
 					new_tab = (struct table_node*)malloc(sizeof(struct table_node));
 					//checar erros em malloc
 					fscanf(fp_in, "%s %d", &new_tab->name, &new_tab->value);
-					// Ao terminar de ler todos os arquivos, já teremos a 
+					// Ao terminar de ler todos os arquivos, já teremos a
 					// tabela global de definições
 					new_tab->value += size_prev;
 					new_tab->next = NULL;
@@ -135,14 +137,14 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
-		//don't free map 
+		//don't free map
 		fclose(fp_in);
 	}
-	
+
 	tmp_tab = use_table;
 	while(tmp_tab != NULL) {
 		n = search_def_table(def_table, tmp_tab->name);
-		
+
 		tmp_list = list;
 		for(i = 0; i < tmp_tab->value; i++) {
 			tmp_list = tmp_list->next;
@@ -150,7 +152,7 @@ int main(int argc, char *argv[]) {
 		tmp_list->value += n;
 		tmp_tab = tmp_tab->next;
 	}
-	
+
 	//escreve cabeçalho
 	fprintf(fp_out, "%d", (size + size_prev));
 	fputc('\n', fp_out);
@@ -164,8 +166,41 @@ int main(int argc, char *argv[]) {
 		fputc(' ', fp_out);
 		tmp_list = tmp_list->next;
 	}
-	
+
+    for(i = 0; i < (argc-1); i++) {
+        free(map[i]);
+    }
+    free(map);
+    deleteTab(use_table);
+    deleteTab(def_table);
+    deleteList(list);
+
 	return 0;
 }
 
+int search_def_table(struct table_node *table, char *name) {
+	struct table_node *tmp = table;
+	while(tmp != NULL) {
+		if(!strcmp(tmp->name, name)) return tmp->value;
+		tmp = tmp->next;
+	}
+	return 0;
+}
 
+void deleteTab (struct table_node *table) {
+    struct table_node* tmp;
+    while(table != NULL) {
+    	tmp = table;
+    	table = table->next;
+    	free(tmp);
+    }
+}
+
+void deleteList (struct list_node *list) {
+    struct list_node* tmp;
+    while(list != NULL) {
+    	tmp = list;
+    	list = list->next;
+    	free(tmp);
+    }
+}

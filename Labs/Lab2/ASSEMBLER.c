@@ -173,7 +173,6 @@ int main(int argc, char *argv[]) {
 
     for (n = 1; n < argc; n++) {
     	errors = 0;
-        printf("%d -> %s\n\n", argc, argv[n]);
         if ((fp_in = fopen(argv[n], "r")) == NULL) {
             printf("Input file not found.\n");
             return 1;
@@ -204,7 +203,7 @@ int main(int argc, char *argv[]) {
             printf("Could not open intermediate file %s.\n", pass_pre_out);
             return 1;
         }
-		
+
         strcpy(pass_one_out, output_file);
         strcat(pass_one_out, ".o");
 
@@ -220,7 +219,10 @@ int main(int argc, char *argv[]) {
         fclose(fp_in);
         fclose(fp_out);
 
-        //if (errors != 0) return errors;
+        /*if (errors != 0) {
+            remove(pass_pre_out);
+            remove(pass_one_out);
+        }*/
     }
 
     return errors;
@@ -239,11 +241,12 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	int linePos = 0;						//
 	int sec = -1;							//
 	int endFile = 0;						//
+	int i;
 	struct equ_tab *equTable_Head = NULL;	//
 	struct equ_tab *tmp = NULL;				//
 
     while(GetLine(fin, line)) {
-
+        //printf("%s\n", line);
     	// Increments line counter
     	linec++;
 
@@ -286,7 +289,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    			(*error_count)++;
 	    		}
     		}*/
-    		
+
     		if((CountSpaces(line) == 1) && (line[strlen(line)-2] == ':')) {
     			line[strlen(line)-1] = '\0';
     			modifyLines(*linesTable_Head, linec, 0);
@@ -319,7 +322,8 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    		if((linePos = GetToken(line, token1, linePos))) {
 		    		// Checks if first token is a valid label
 		    		if(IsLabel(token1)) {
-                    	// Checks if there is another token in the line
+		    		    //token1[strlen(token1)] = '\0';
+                        // Checks if there is another token in the line
                         if((linePos = GetToken(line, token2, linePos))) {
                             // Checks if token is an EQU
                             if(!strcmp(token2,"EQU")) {
@@ -405,19 +409,22 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 		    					if(tmp != NULL) {
 	    							// Skips line if operand is a zero
 	    							if((atoi(tmp->value) == 0)) {
-	    								if (GetLine(fin, line)) {
+                                        i = 1;
+                                        while ((i > 0) && (strlen(lineOut) == 0)) {
+                                            i = GetLine(fin, lineOut);
 		    								linec++;
 		    								addLines(linesTable_Head, linec, 0);
 		    							}
-	    								else {
+	    								if(i == 0){
 	    									printf("Preprocess: ");
 	    									printf("Line %d. Semantic Error: IF in last line of file.\n", linec);
 	    									(*error_count)++;
 	    								}
+	    								lineOut[0] = '\0';
 	    							}
 		    						if((linePos = GetToken(line, token1, linePos))) {
 		    							printf("Preprocess: ");
-		    							printf("Line %d. Sintatic Error: Incorrect number of operands in IF.\n", linec);
+		    							printf("Line %d. Sintatic Error: Incorrect number of operands in IF %s %d.\n", linec, token1, linePos);
 		    							(*error_count)++;
 		    						}
 		    					}
@@ -506,6 +513,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    */
 	    else modifyLines(*linesTable_Head, linec, 0);
     }
+printf("%s\n", line);
 
     /*
     * After its use during preprocess passage, the EQU
@@ -572,6 +580,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 										};
 
     while(GetLine(fin, line)) {
+//printf("%s", line);
 
     	line_count++;
     	tmp_line = searchLines(*linesTable_Head, line_count);
@@ -679,7 +688,12 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 											lineOut->op[opr_count] = tmp_sym->address;
 											// If the token is defined as extern
 				                            if (tmp_sym->type = 'E') {
-				                                AddUse(&tmp_sym->useTable, lc[sec]);
+                                                if (tmp_op->opcode == 9) {
+                                                    AddUse(&tmp_sym->useTable, (lc[sec] - (2 - opr_count)));
+                                                }
+                                                else {
+                                                    AddUse(&tmp_sym->useTable, (lc[sec] - (opr_count + 1)));
+                                                }
 				                            }
 										}
                                         // Else, if token is yet to be defined
@@ -715,7 +729,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 												// If token has already been defined
 												if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
                                                     // If defined offset is within the range of memory allocated for the label
-													if((offset < (tmp_sym->vector))) {
+													if((offset < (tmp_sym->vector)) || (tmp_sym->type == 'E')) {
 														lineOut->op[opr_count-1] += offset;
 													}
                                                     // Else, if offset goes beyond the delimited space reserved for its label
@@ -963,7 +977,6 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 											// Ensure that the label address is set to 0
 											tmp_sym->address = 0;
 											flagEx++;
-											printf("Extern!\n");
 										}
 										else {
 											printf("Semantic error: Use of EXTERN symbol before definition\n", line_original);
@@ -1013,8 +1026,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                             // Modify label type to public
 											tmp_sym->type = 'P';
 											flagP++;
-											printf("Public!\n");
-									    }
+										}
 									    else {
 									        printf("Line %d. Lexical error: Invalid token\n", line_original);
 									        (*error_count)++;
@@ -1047,7 +1059,6 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                     // If BEGIN has no arguments
                                     if(i == 0) {
                                         // Checks whether there are multiple BEGINs
-                                        printf("Begin!\n");
                                         flagB++;
                                         if (flagB > 1) {
                                             printf("Line %d. Semantic error: Multiple BEGIN directives in file\n", line_original);
@@ -1088,7 +1099,6 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                     // If no arguments follow END
                                     if(i == 0) {
                                         // Checks whether there are multiple ENDs
-                                        printf("End!\n");
                                         flagE++;
                                         if (flagE > 1) {
                                             printf("Line %d. Semantic error: Multiple END directives in file\n", line_original);
@@ -1139,7 +1149,6 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 		}
     }
 
-    printf("BEGIN: %d END: %d\n", flagB, flagE);
     if ((flagB != 1) || (flagE != 1)) {
         if ((flagB == 0) && (flagE == 0) && (n_args > 2)) {
             printf("Semantic error: File is missing BEGIN and END\n");
@@ -1198,12 +1207,7 @@ void AddEQU(struct equ_tab **table, char *name, char *digit) {
 
 	int i = 0;
 	struct equ_tab* new = (struct equ_tab*)malloc(sizeof(struct equ_tab));
-	for (i = 0; i < strlen(name); i++) {
-		if (name[i] == ':') {
-			new->label[i] = '\0';
-		}
-		else new->label[i] = name[i];
-	}
+	strcpy(new->label, name);
 	strcpy(new->value, digit);
 	new->next = *table;
 	*table = new;
@@ -1391,7 +1395,7 @@ void AdjustAdresses(struct sym_table_node *table, int lc_text) {
 	struct sym_table_node *tmp = table;
 	while(tmp != NULL) {
 		if(tmp->sec == 2) {
-			tmp->address += (lc_text + 1);
+			tmp->address += (lc_text);
 		}
 		tmp = tmp->next;
 	}
@@ -1522,13 +1526,13 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node 
     }
     fprintf(fp, "\n");*/
     if(ext) {
-    	fprintf(fp, "U: ");
+    	fprintf(fp, "U:");
 		tmpSym = symtable;
 		while(tmpSym != NULL) {
 			if(tmpSym->type == 'E') {
 				tmpUse = tmpSym->useTable;
 				while(tmpUse != NULL) {
-					fprintf(fp, "%s %d ", tmpSym->label, tmpUse->address);
+					fprintf(fp, " %s %d", tmpSym->label, tmpUse->address);
 					tmpUse = tmpUse->next;
 				}
 				DeleteUseTable(tmpSym->useTable);
@@ -1546,11 +1550,11 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node 
     	tmpDef = tmpDef->next;
     }*/
     if(pub) {
-    	fprintf(fp, "D: ");
+    	fprintf(fp, "D:");
 		tmpSym = symtable;
 		while(tmpSym != NULL) {
 			if(tmpSym->type == 'P') {
-				fprintf(fp, "%s %d ", tmpSym->label, tmpSym->address);
+				fprintf(fp, " %s %d", tmpSym->label, tmpSym->address);
 			}
 			tmpSym = tmpSym->next;
 		}
@@ -1678,7 +1682,9 @@ int GetLine(FILE *fp, char *lineBuffer) {
 
 	if (c == ';') {
 		// If a comment is identified, the rest of the line is ignored
-		while ((c = fgetc(fp)) != '\n');
+		while ((c != '\n') && (c != EOF)) {
+            c = fgetc(fp);
+		}
 	}
 
 	// If line wasn't empty
@@ -1906,7 +1912,7 @@ int IsHex(char *token) {
 	int len = strlen(token);
 	int i = 0;
 	int negative = 0;
-	
+
 	if(len > 2) { // Token is not just "0X"
 		if(token[i] == '-') {
 			if(len <= 3) return 0;

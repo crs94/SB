@@ -12,7 +12,7 @@ input n1
 wrong: input n2
 if one
 jmp mod2
-if 0
+if zero
 jmp mod3
 back: stop
 section data
