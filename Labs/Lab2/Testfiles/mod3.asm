@@ -1,5 +1,5 @@
-one: equ 1
-zero: equ 0
+;true: equ 1
+;false: equ 0
 mod3: begin
 section text
 r: extern
@@ -10,9 +10,11 @@ public five
 output three
 output r
 load minus
-if one
+;if true
+if 1
 jmpn back
-if zero
+;if false
+if 0
 jmpz dont
 section data
 two: const 2

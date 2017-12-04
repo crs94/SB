@@ -1,5 +1,5 @@
-one: equ 1
-zero: equ 0
+;one2: equ 1
+;zero2: equ 0
 mod2: begin
 section text
 n1: extern
@@ -17,9 +17,11 @@ mult two
 div five
 store r
 load ten
-if one
+;if one2
+if 1
 jmpp mod3
-if zero
+;if zero2
+if 0
 jmp wrong
 section data
 r: space 2
