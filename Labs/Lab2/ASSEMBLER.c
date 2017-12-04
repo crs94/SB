@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <math.h>
 
 #define LINE_LENGTH 560
 #define TOKEN_LENGTH 101
@@ -43,24 +42,24 @@ struct replace_list_node {				// Struct to hold list of references of a symbol t
 	struct replace_list_node *next;		// Pointer to next node
 };
 
+struct use_list_node {					// Struct to store the use table
+	int address;
+	struct use_list_node *next;
+};
+
 struct sym_table_node {					// Struct to store a node of the symbol table
 	char label[TOKEN_LENGTH];			// Name of the label
 	int address;						// Value of Location Counter when label was defined. -1 until defined
 	int defined;						// 1 if label definition was found. 0 otherwise
 	int vector; 						// Size of vector defined with SPACE directive. Zero until defined
 	int sec;							// Section in which symbol is defined
-	char type; 							// E for extern, p for public, n for normal
+	char type; 							// E for extern, p for public, n for normal, u for undefined
 	struct replace_list_node *list; 	// This will keep offset position of undefined symbol
-	//struct use_list_node *useTable;		// Tabela de usos
+	struct use_list_node *useTable;		// Tabela de usos
 	struct sym_table_node *next;		// Pointer to the next node in the symbol table
 };
 
-struct use_list_node {					// Struct to store the use table
-	int address;
-	struct use_list_node *next;
-};
-
-struct output_use {                     // Struct to store the use table
+/*struct output_use {                     // Struct to store the use table
     char label[TOKEN_LENGTH];           // Name of the label
     int address;                        // Memory address where the exern label has been found throughout the code
     struct output_use *next;            // Pointer to the next node in the use table
@@ -70,7 +69,7 @@ struct output_def {                     // Struct to store the definition table
     char label[TOKEN_LENGTH];           // Name of the label
     int address;                         // Address in which the public label was defined
     struct output_def *next;            // Pointer to the next node in the definition table
-};
+};*/
 
 struct output_line {					// Struct to hold output to be written to file until pass one finishes
 	int opcode;							// Opcode (0 for CONST, 15 for SPACE)
@@ -85,6 +84,8 @@ int GetToken(char *lineBuffer, char *tokenBuffer, int p);
 
 int GetToken2(char *lineBuffer, char *tokenBuffer, int *p);
 
+int CountSpaces(char *line);
+
 int IsLabel(char *token);
 
 int IsValid(char *token);
@@ -92,6 +93,8 @@ int IsValid(char *token);
 int IsNumber(char *token);
 
 int IsHex(char *token);
+
+int Power(int base, int n);
 
 int HexToInt(char *token);
 
@@ -111,19 +114,9 @@ void AddEQU(struct equ_tab **table, char *label, char *digit);
 
 void DeleteEQU(struct equ_tab *table);
 
-struct MDT *searchMNT(struct MNT *table, char *token);
-
-struct MDT *addMDT(struct MDT **table, char *toAdd, int line);
-
-void addMNT(struct MNT **table, char *toAdd);
-
-void deleteMDT(struct MDT *table);
-
-void deleteMNT(struct MNT *table);
-
 struct sym_table_node *SearchSym(struct sym_table_node *table, char *token);
 
-void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section);
+void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section, char type);
 
 void DeleteSymTable(struct sym_table_node *table);
 
@@ -133,27 +126,25 @@ void AddReplace(struct replace_list_node **node, int *n);
 
 void ReplaceLists(struct sym_table_node *node, int *error);
 
-void AddUse(struct output_use **node, char *name, int address);
+void AddUse(struct use_list_node **usetab, int address);
 
-void DeleteUseTable(struct output_use *table);
+void DeleteUseTable(struct use_list_node *usetab);
 
-void AddDef(struct output_def **node, char *name, int address);
+//void AddDef(struct output_def **node, char *name, int address);
 
-void DeleteDefTable(struct output_def *table);
+//void DeleteDefTable(struct output_def *table);
 
 void AddLine(struct output_line *line, struct output_line **head);
 
 void DeleteOutputLines(struct output_line *first);
 
-void WriteObjectFile(FILE *fp, char *filename, int *size, struct output_use *useTable, struct output_def *defTable, struct output_line *first_text, struct output_line *first_data);
+void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node *symtable, struct output_line *first_text, struct output_line *first_data, int ext, int pub);
 
 void AdjustAdresses(struct sym_table_node *table, int lc_text);
 
 void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText, int *error);
 
 int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
-
-int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count);
 
 int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTable_Head, int *error_count, int n_args);
 
@@ -180,16 +171,18 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-    for (n = 0; n < argc - 1; n++) {
-            printf("%d -> %s\n\n", argc, argv[n +1]);
-        if ((fp_in = fopen(argv[n + 1], "r")) == NULL) {
+    for (n = 1; n < argc; n++) {
+    	errors = 0;
+        printf("%d -> %s\n\n", argc, argv[n]);
+        if ((fp_in = fopen(argv[n], "r")) == NULL) {
             printf("Input file not found.\n");
             return 1;
         }
 
-        strcpy(output_file, argv[n + 1]);
-        p_str = strstr(output_file, ".asm");
-        *p_str = '\0';
+        strcpy(output_file, argv[n]);
+        if((p_str = strstr(output_file, ".asm")) != NULL) {
+	        *p_str = '\0';
+    	}
         printf("%s\n", output_file);
 
         strcpy(pass_pre_out, output_file);
@@ -208,10 +201,10 @@ int main(int argc, char *argv[]) {
         fclose(fp_out);
 
         if ((fp_in = fopen(pass_pre_out, "r")) == NULL) {
-            printf("Could not open intermediate file 2.\n");
+            printf("Could not open intermediate file %s.\n", pass_pre_out);
             return 1;
         }
-
+		
         strcpy(pass_one_out, output_file);
         strcat(pass_one_out, ".o");
 
@@ -220,7 +213,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        if(One_Pass(fp_in, fp_out, argv[n + 1], &line_table, &errors, argc)) {
+        if(One_Pass(fp_in, fp_out, argv[n], &line_table, &errors, argc)) {
             printf("Pass one returned errors\n");
         }
 
@@ -271,7 +264,7 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    	 * is a label, one must concatenate its content
 	    	 * with the content found on the next valid line.
 	    	 */
-	    	if (line[strlen(line)-2] == ':') {
+	    	/*if (line[strlen(line)-2] == ':') {
     			line[strlen(line)-1] = '\0';
     			modifyLines(*linesTable_Head, linec, 0);
     			do {
@@ -286,6 +279,30 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     			if (!endFile) {
 	    			strcat(line, " ");
 	    			strcat(line, lineOut);
+	    		}
+	    		else {
+	    			printf("Preprocess: ");
+	    			printf("Line %d. Sintatic Error: Label refers to no instruction or directive.\n", linec);
+	    			(*error_count)++;
+	    		}
+    		}*/
+    		
+    		if((CountSpaces(line) == 1) && (line[strlen(line)-2] == ':')) {
+    			line[strlen(line)-1] = '\0';
+    			modifyLines(*linesTable_Head, linec, 0);
+    			do {
+    				// Repeat while line == (blanks and/or '\n')
+    				if (!GetLine(fin, lineOut)) {
+    					endFile = 1;
+    					break;
+    				}
+    				linec++;
+    				addLines(linesTable_Head, linec, 0);
+				} while (strlen(lineOut) == 0);
+    			if (!endFile) {
+	    			strcat(line, " ");
+	    			strcat(line, lineOut);
+	    			lineOut[0] = '\0';
 	    		}
 	    		else {
 	    			printf("Preprocess: ");
@@ -499,162 +516,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
     return (*error_count);
 }
 
-/****************************************** PASS ZERO *************************************/
-
-int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *error_count) {
-
-    char line[LINE_LENGTH];				//
-	char lineOut[LINE_LENGTH];			//
-	char token1[TOKEN_LENGTH];			//
-	char token2[TOKEN_LENGTH];			//
-	int linec = 0; 						// Counts the line
-    int linem = 0; 						// Counts the lines that will be on the output file
-    int lineo = 0;                      // Stores the number of the line in the original file
-	int linePos = 0;					//
-	int sec = -1;						//
-	int inMacro = 0;					//
-	int firstMacro = 0;					//
-	struct MDT *mdtTable_Head = NULL;	//
-    struct MDT *tmpMDT = NULL;			//
-    struct MNT *mntTable_Head = NULL;	//
-    struct fileLines *linesTmp = NULL;	//
-
-
-    while (GetLine(fin, line)) {
-        linec++; // Increments line counter
-		linesTmp = searchLines(*linesTable_Head, linec);
-		if(linesTmp != NULL) lineo = linesTmp->lineNum;
-        linePos = 0;
-        lineOut[0] = '\0';
-
-        /*
-        * If line has MACRO directive
-        */
-        if (strstr(line, " MACRO ") || strstr(line, "MACRO ") || strstr(line, " MACRO\n")) {
-            // Checks whether code has a MACRO within another MACRO
-            if (!inMacro) {
-                if ((linePos = GetToken(line, token1, linePos))) {
-                    if (IsLabel(token1)) {
-		                if((linePos = GetToken(line, token2, linePos))) {
-		                	if(!strcmp(token2, "MACRO")) {
-		                		if(sec != 1) {
-									printf("Line %d. Warning: MACRO directive outside TEXT section.\n", lineo);
-								}
-			                	inMacro++;
-			                    firstMacro = 1;
-			                    addMNT(&mntTable_Head, token1);
-			                    modifyLines(*linesTable_Head, linec, 0);
-			                }
-			                else {
-			                	printf("Line %d. Sintatic error: Unexpected token %s\n", lineo, token2);
-                    			(*error_count)++;
-			                }
-		                }
-                    }
-                    else {
-                    	printf("Line %d. Sintatic error: invalid label.\n", lineo);
-                    	(*error_count)++;
-                    }
-                }
-            }
-            else {
-            	printf("Line %d. Error: Nested MACRO.\n", lineo);
-            	(*error_count)++;
-            }
-        }
-
-        /*
-        * Else, if line has ENDMACRO directive
-        */
-        else if ((!strcmp(line, "ENDMACRO\n")) || (!strcmp(line, " ENDMACRO\n"))) {
-            // Checks whether END happens within a MACRO
-		    if (inMacro) {
-		        tmpMDT = addMDT(&mdtTable_Head, line, lineo);
-		        inMacro = 0;
-		        modifyLines(*linesTable_Head, linec, 0);
-		    }
-		    else {
-		        linesTmp = searchLines(*linesTable_Head, linec);
-		        printf("Line %d. Semantic error: ENDMACRO without MACRO.\n", lineo);
-		        (*error_count)++;
-		    }
-        }
-
-        /*
-        * Else, line has neither MACRO nor ENDMACRO directive
-        */
-        else {
-            // If line is the first line in MACRO definition
-            if ((inMacro) && (firstMacro)) {
-                tmpMDT = addMDT(&mdtTable_Head, line, lineo);
-                mntTable_Head->begin = tmpMDT;
-                tmpMDT = NULL;
-                firstMacro = 0;
-                modifyLines(*linesTable_Head, linec, 0);
-            }
-
-            // Else, if line is still in MACRO, but it's not longer the first
-            else if ((inMacro) && (!firstMacro)) {
-                tmpMDT = addMDT(&mdtTable_Head, line, lineo);
-                modifyLines(*linesTable_Head, linec, 0);
-            }
-
-            // Else, line is not inside of MACRO definition
-            else {
-                while((linePos = GetToken(line, token1, linePos))) {
-                    tmpMDT = searchMNT(mntTable_Head, token1);
-
-                    // If token1 is found on the MDT, found a MACRO
-                    if(tmpMDT != NULL) {
-                        while (((strcmp(tmpMDT->line, "ENDMACRO")) && (strcmp(tmpMDT->line, "ENDMACRO ")) && (tmpMDT != NULL))) {
-                            fprintf(fout, "%s\n", tmpMDT->line);
-                            linem = insertLines(*linesTable_Head, tmpMDT->lineNum, linem);
-                            linec = linem;
-                            tmpMDT = tmpMDT->next;
-                        }
-                    }
-                    else {
-                    	if(!strcmp(token1, "SECTION")) {
-	 						sec = 0;
-	 					}
-	 					else {
-	 						if(!sec) {
-	 							if(!strcmp(token1, "TEXT")) {
-	 								sec = 1;
-	 							}
-	 							else if(!strcmp(token1, "DATA")) {
-	 								sec = 2;
-	 							}
-	 							else sec = 3; //unknown section
-	 						}
-	 					}
-	 					strcat(lineOut, token1);
-						strcat(lineOut, " ");
-                    }
-                }
-
-                lineOut[strlen(lineOut) - 1] = '\n';
-    			fprintf(fout, "%s", lineOut);
-                linem++;
-                modifyLines(*linesTable_Head, linec, linem);
-            }
-        }
-    }
-    // If some MACRO was not finished by the end of the code
-    if (inMacro) {
-    	printf("Semantic Error: MACRO is missing ENDMACRO.\n");
-    	(*error_count)++;
-    }
-
-    /*
-    * After its use during passage zero, MNT and MDT will
-    * not be used anymore and can be deleted
-    */
-    deleteMDT(mdtTable_Head);
-    deleteMNT(mntTable_Head);
-
-    return (*error_count);
-}
 
 /***************************************** PASS ONE **************************************/
 
@@ -674,6 +535,8 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 	int sec = 0;										//
 	int flagB = 0;                                      //
 	int flagE = 0;                                      //
+	int flagEx = 0;										//
+	int flagP = 0;										//
 	int offset = 0;										//
 	int lc[3] = {0, 0, 0};								//
 	int line_count = 0;									//
@@ -711,8 +574,8 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
     while(GetLine(fin, line)) {
 
     	line_count++;
+    	tmp_line = searchLines(*linesTable_Head, line_count);
     	if(tmp_line != NULL) line_original = tmp_line->lineNum;
-    	line_original = tmp_line->lineNum;
     	label_count = 0;
     	linePos = 0;
     	dir = -1;
@@ -734,7 +597,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 
 						// If label is not on symTable
 						if(tmp_sym == NULL) {
-							AddSym(&symTable, token1, lc[sec], 1, sec); //found label definition
+							AddSym(&symTable, token1, lc[sec], 1, sec, 'N'); //found label definition
 							tmp_sym = symTable;
 						}
 
@@ -755,9 +618,9 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 						}
 
 						// If the label is defined as public
-                        if (tmp_sym->type = 'p') {
+                      /*if (tmp_sym->type = 'p') {
                             AddDef(&defTable, token1, lc[sec]);
-                        }
+                        }*/
 						label_count++;
 					}
 					else {
@@ -814,6 +677,10 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                         // If Token has been defined already
                                         if((tmp_sym->defined) && (tmp_sym->sec == 1)) {
 											lineOut->op[opr_count] = tmp_sym->address;
+											// If the token is defined as extern
+				                            if (tmp_sym->type = 'E') {
+				                                AddUse(&tmp_sym->useTable, lc[sec]);
+				                            }
 										}
                                         // Else, if token is yet to be defined
                                         else {
@@ -821,15 +688,9 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 											AddReplace(&tmp_sym->list, &lineOut->op[opr_count]);
 										}
 									}
-
-									// If the token is defined as extern
-                                    if (tmp_sym->type = 'e') {
-                                        AddUse(&useTable, token1, lc[sec]);
-                                    }
-
 									// Else, if token is yet to be added to the table
 									else {
-										AddSym(&symTable, token1, -1, 0, 0);
+										AddSym(&symTable, token1, -1, 0, 0, 'N');
 										lineOut->op[opr_count] = -1;
 										AddReplace(&symTable->list, &lineOut->op[opr_count]);
 										tmp_sym = symTable;
@@ -1096,11 +957,18 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                     }
                                     // If EXTERN has no arguments
                                     if(i == 0) {
-                                        // Modify label type to extern
-										tmp_sym->type = 'e';
-										// Ensure that the label address is set to 0
-										tmp_sym->address = 0;
-										printf("Extern!\n");
+                                    	if(tmp_sym->list == NULL) {
+		                                    // Modify label type to extern
+											tmp_sym->type = 'E';
+											// Ensure that the label address is set to 0
+											tmp_sym->address = 0;
+											flagEx++;
+											printf("Extern!\n");
+										}
+										else {
+											printf("Semantic error: Use of EXTERN symbol before definition\n", line_original);
+                                            (*error_count)++;
+										}
                                     }
                                     // Else, if EXTERN has arguments
                                     else {
@@ -1139,11 +1007,12 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                             // If token is not in table
                                             if (tmp_sym == NULL) {
                                             	// Add label
-												AddSym(&symTable, token1, -1, 0, sec);
+												AddSym(&symTable, token1, lc[sec], 0, sec, 'P');
 												tmp_sym = symTable;
                                             }
                                             // Modify label type to public
-											tmp_sym->type = 'p';
+											tmp_sym->type = 'P';
+											flagP++;
 											printf("Public!\n");
 									    }
 									    else {
@@ -1192,7 +1061,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
                                     // Else, if BEGIN has arguments
                                     else {
                                         if(i > 0) {
-                                            printf("Line %d. Sintatic error: Too many operands in BEGIN\n", line_original);
+                                            printf("Line %d. Sintatic error: Tokens after BEGIN directive\n", line_original);
                                             (*error_count)++;
                                         }
                                     }
@@ -1290,14 +1159,12 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
         }
     }
 
-    // Acusar erro se lc[1] = 0? (no section TEXT)
-    //checar se há labels indefinidas na symTable antes?
     AdjustAdresses(symTable, lc[1]);
     ReplaceLists(symTable, error_count);
     i = 0;
     FinalErrorCheck(symTable, head_text, head_data, lc[1], &i);
     (*error_count) += i;
-    WriteObjectFile(fout, filename, lc, useTable, defTable, head_text, head_data);
+    WriteObjectFile(fout, filename, lc, symTable, head_text, head_data, flagEx, flagP);
     DeleteOutputLines(head_text);
     DeleteOutputLines(head_data);
     DeleteSymTable(symTable);
@@ -1356,127 +1223,8 @@ void DeleteEQU(struct equ_tab *table) {
     }
 }
 
-/****************************** MACRO FUNCTIONS ******************************/
 
-/*
-* Searches for labels in the MNT
-*   It is used to find a label given by the variable token
-*/
-struct MDT *searchMNT(struct MNT *table, char *token) {
-
-    struct MNT* tmp = table;
-
-    /*
-    * Searches whole table until correct label is found
-    * or until the end is reached
-    */
-    while ((tmp != NULL)) {
-    	if (!strcmp(tmp->label, token)) {
-        	/*
-            * If the label was found in the MNT table,
-            * returns the pointer for the beginning of
-            * the macro definition on the MDT
-            */
-            return tmp->begin;
-        }
-        tmp = tmp->next;
-    }
-    // Else, returns a NULL pointer
-    return NULL;
-}
-
-/*
-* Add the new line to the MDT
-*   It is used to add a new line to the MDT, storing the
-*   line itself and the number of the line in which it
-*   appeared on the original file
-*/
-struct MDT *addMDT(struct MDT **table, char *toAdd, int line) {
-
-	int i = 0;
-	struct MDT* tmp = *table;
-    struct MDT* before = NULL;
-	struct MDT* new = (struct MDT*)malloc(sizeof(struct MDT));
-
-    // Removes LF from lines before inserting into table
-    for (i = 0; i < strlen(toAdd); i++) {
-        if (toAdd[i] == '\n') {
-            new->line[i] = '\0';
-        }
-        else new->line[i] = toAdd[i];
-    }
-    new->lineNum = line;
-    new->next = NULL;
-
-    // If the table is empty, insert first node
-	if (*table == NULL) {
-        *table = new;
-        return *table;
-    }
-
-    // Else, search for empty space
-    while (tmp != NULL) {
-        before = tmp;
-        tmp = tmp->next;
-	}
-    before->next = new;
-    return tmp;
-    /*
-    * Whether the line inserted is the first one or just
-    * some random line of the table, the function must return
-    * a pointer to the line. Then, if the line is the first one
-    * in the macro definition, a reference can be added in the MNT.
-    */
-}
-
-/*
-* Add the new label to the MNT
-*   It is used to add a new label to the MDT, storing
-*   also a pointer that refers to the first line of the macro
-*   definition in the MDT.
-*/
-void addMNT(struct MNT **table, char *toAdd) {
-
-	int i = 0;
-	struct MNT* new = (struct MNT*)malloc(sizeof(struct MNT));
-	for (i = 0; i < strlen(toAdd); i++) {
-		if (toAdd[i] == ':') {
-			new->label[i] = '\0';
-		}
-		else new->label[i] = toAdd[i];
-	}
-	/*
-	* Since the macro definition is yet to be reached,
-	* the pointer "begin" is set to NULL by default.
-	*/
-	new->begin = NULL;
-	new->next = *table;
-	*table = new;
-}
-
-// Deletes the MDT
-void deleteMDT(struct MDT *table) {
-
-    struct MDT* tmp;
-    while(table != NULL) {
-    	tmp = table;
-    	table = table->next;
-    	free(tmp);
-    }
-}
-
-// Deletes the MNT
-void deleteMNT(struct MNT *table) {
-
-    struct MNT* tmp;
-    while(table != NULL) {
-    	tmp = table;
-    	table = table->next;
-    	free(tmp);
-    }
-}
-
-/************************************ PASS ONE FUNCTION ***************************************/
+/************************************ PASS ONE FUNCTIONS ***************************************/
 
 //Found an undefined operand and need to include it in replace_list. Includes at the front of list
 void AddReplace(struct replace_list_node **node, int *n) {
@@ -1518,17 +1266,16 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 }
 
 // Found an extern operand and need to include it in use table. Includes at the front of list
-void AddUse(struct output_use **node, char *name, int address) {
-	struct output_use *new = (struct output_use*)malloc(sizeof(struct output_use));
-	strcpy(new->label, name);
+void AddUse(struct use_list_node **usetab, int address) {
+	struct use_list_node *new = (struct use_list_node*)malloc(sizeof(struct use_list_node));
 	new->address = address;
-	new->next = *node;
-	*node = new;
+	new->next = *usetab;
+	*usetab = new;
 }
 
 // Deletes Use Table
-void DeleteUseTable(struct output_use *table) {
-	struct output_use* tmp;
+void DeleteUseTable(struct use_list_node *table) {
+	struct use_list_node* tmp;
     while(table != NULL) {
     	tmp = table;
     	table = table->next;
@@ -1537,23 +1284,23 @@ void DeleteUseTable(struct output_use *table) {
 }
 
 // Found an public label definition and need to include it in definition table. Includes at the front of list
-void AddDef(struct output_def **node, char *name, int address) {
+/*void AddDef(struct output_def **node, char *name, int address) {
 	struct output_def *new = (struct output_def*)malloc(sizeof(struct output_def));
 	strcpy(new->label, name);
 	new->address = address;
 	new->next = *node;
 	*node = new;
-}
+}*/
 
 // Deletes Definition Table
-void DeleteDefTable(struct output_def *table) {
+/*void DeleteDefTable(struct output_def *table) {
 	struct output_def* tmp;
     while(table != NULL) {
     	tmp = table;
     	table = table->next;
     	free(tmp);
     }
-}
+}*/
 
 /*
  * Function to search for a label in the symbol table.
@@ -1574,14 +1321,16 @@ struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
 }
 
 // Function to add a node in the symbol table.
-void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section) {
+void AddSym(struct sym_table_node **table, char *name, int address, int defined, int section, char type) {
 
 	struct sym_table_node* new = (struct sym_table_node*)malloc(sizeof(struct sym_table_node));
 	strcpy(new->label, name);
 	new->address = address;
 	new->defined = defined;
 	new->list = NULL;
+	new->useTable = NULL;
 	new->vector = 0;
+	new->type = type;
 	new->sec = section;
 	new->next = *table;
 	*table = new;
@@ -1673,12 +1422,12 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 		}
 		else {
 
-			if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) ||
+			/*if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) ||
 				((temp->op[1] > -1) && (temp->op[1] < i))) {
 
-				printf("Linha %d. Erro: Instrução referencia seção inválida\n", temp->line);
+				printf("Linha %d. Error: Instruction references invalid section\n", temp->line);
 				(*error)++;
-			}
+			}*/
 
 			if(temp->opcode == 9) {
 				while((i < temp->op[1]) && (temp2 != NULL)) {
@@ -1691,7 +1440,7 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 					temp2 = temp2->next;
 				}
 				if((temp2->opcode == 0) && (temp2->op[0] == 0)) {
-					printf("Linha %d. Erro: Modificação de valor constante\n", temp->line);
+					printf("Linha %d. Semantic error: Modification of constant value\n", temp->line);
 					(*error)++;
 				}
 				i = (secText + 1);
@@ -1709,7 +1458,7 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 						temp2 = temp2->next;
 					}
 					if((temp2->opcode == 0) && (temp2->op[0] == 0)) {
-						printf("Linha %d. Erro: Modificação de valor constante\n", temp->line);
+						printf("Linha %d. Semantic error: Modification of constant value\n", temp->line);
 						(*error)++;
 					}
 					i = (secText + 1);
@@ -1750,12 +1499,13 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 *       M: Bitmap
 *       T: Code
 */
-void WriteObjectFile(FILE *fp, char *filename, int *size, struct output_use *useTable, struct output_def *defTable, struct output_line *first_text, struct output_line *first_data) {
+void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node *symtable, struct output_line *first_text, struct output_line *first_data, int ext, int pub) {
 
 	int n;
 	struct output_line *tmp = NULL;
-	struct output_use *tmpUse = NULL;
-	struct output_def *tmpDef = NULL;
+	struct sym_table_node *tmpSym = NULL;
+	struct use_list_node *tmpUse = NULL;
+	//struct output_def *tmpDef = NULL;
 
 	// Writing header information: file name
 	fprintf(fp, "N: %s\n", filename);
@@ -1764,22 +1514,48 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct output_use *use
 	fprintf(fp, "S: %d %d\n", size[1], size[2]);
 
 	// Writing header information: use table
-	tmpUse = useTable;
+	/*tmpUse = useTable;
 	fprintf(fp, "U:");
     while(tmpUse != NULL) {
     	fprintf(fp, " %s %d", tmpUse->label, tmpUse->address);
     	tmpUse = tmpUse->next;
     }
-    fprintf(fp, "\n");
+    fprintf(fp, "\n");*/
+    if(ext) {
+    	fprintf(fp, "U: ");
+		tmpSym = symtable;
+		while(tmpSym != NULL) {
+			if(tmpSym->type == 'E') {
+				tmpUse = tmpSym->useTable;
+				while(tmpUse != NULL) {
+					fprintf(fp, "%s %d ", tmpSym->label, tmpUse->address);
+					tmpUse = tmpUse->next;
+				}
+				DeleteUseTable(tmpSym->useTable);
+			}
+			tmpSym = tmpSym->next;
+		}
+		fprintf(fp, "\n");
+	}
 
 	// Writing header information: definition table
-	tmpDef = defTable;
+	/*tmpDef = defTable;
 	fprintf(fp, "D:");
     while(tmpDef != NULL) {
     	fprintf(fp, " %s %d", tmpDef->label, tmpDef->address);
     	tmpDef = tmpDef->next;
-    }
-    fprintf(fp, "\n");
+    }*/
+    if(pub) {
+    	fprintf(fp, "D: ");
+		tmpSym = symtable;
+		while(tmpSym != NULL) {
+			if(tmpSym->type == 'P') {
+				fprintf(fp, "%s %d ", tmpSym->label, tmpSym->address);
+			}
+			tmpSym = tmpSym->next;
+		}
+		fprintf(fp, "\n");
+	}
 
     // Writing header information: bitmap
 	tmp = first_text;
@@ -1789,11 +1565,11 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct output_use *use
     		if(tmp->opcode == 14) {
     			fprintf(fp, "0");
 			}
-			else {
+			else if(tmp->opcode == 9) {
+				fprintf(fp, "011");
+			}
+			else{
 				fprintf(fp, "01");
-				if(tmp->op[1] > -1) {
-					fprintf(fp, "1");
-				}
 			}
     	}
     	tmp = tmp->next;
@@ -1816,6 +1592,7 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct output_use *use
     fprintf(fp, "\n");
 
     // Writing header information: code
+    tmp = first_text;
     fprintf(fp, "T:");
     while(tmp != NULL) {
     	if(tmp->opcode > -1) {
@@ -1956,6 +1733,17 @@ int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
 	return 1;
 }
 
+int CountSpaces(char *line) {
+	int count = 0;
+	int i;
+	for(i = 0; i < strlen(line); i++) {
+		if(isspace(line[i])) {
+			count++;
+		}
+	}
+	return count;
+}
+
 /*
  * This function tests if token is a label
  */
@@ -1990,7 +1778,7 @@ int IsLabel(char *token) {
 	else if(!strcmp(token, "MACRO:")) {
 		return 0;
 	}
-	else if(!strcmp(token, "END:")) {
+	else if(!strcmp(token, "ENDMACRO:")) {
 		return 0;
 	}
 	else if(!strcmp(token, "SECTION:")) {
@@ -2000,6 +1788,18 @@ int IsLabel(char *token) {
 		return 0;
 	}
 	else if(!strcmp(token, "CONST:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "BEGIN:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "END:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "EXTERN:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "PUBLIC:")) {
 		return 0;
 	}
 	else if(!strcmp(token, "ADD:")) {
@@ -2103,22 +1903,47 @@ int IsNumber(char *token) {
  */
 int IsHex(char *token) {
 
+	int len = strlen(token);
+	int i = 0;
+	int negative = 0;
+	
+	if(len > 2) { // Token is not just "0X"
+		if(token[i] == '-') {
+			if(len <= 3) return 0;
+			negative = 1;
+			i++;
+		}
+		if ((token[i] == '0') && (token[++i] == 'X')) {
+			while( (++i) < len ) {
+				/* Return 0 if character is not a digit and it is
+				 * not a letter from A to F */
+				if((token[i] < 48) || ((token[i] > 57) &&  (token[i] < 65)) || (token[i] > 70)) {
+					return 0;
+				}
+			}
+		}
+		else return 0;
+
+		/*if(negative) {
+			return -1;
+		}*/
+
+		return 1;
+	}
+	else return 0;
+}
+
+/* Power: raise base to n-th power; n >= 0 */
+int Power(int base, int n) {
+
 	int i;
+	int p = 1;
 
-	if ((token[0] == '0') && (token[1] == 'X')) {
-		for(i = 2; i<strlen(token); i++) {
-			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
-		}
-		return 1;
-	}
-	else if ((token[0] == '-') && (token[1] == '0') && (token[2] == 'X')) {
-		for(i = 3; i<strlen(token); i++) {
-			if((token[i] < 48) || ((token[i] > 57) && (token[i] < 65)) || (token[i] > 70)) return 0;
-		}
-		return 1;
+	for (i = 1; i <= n; ++i) {
+		p = p * base;
 	}
 
-	return 0;
+	return p;
 }
 
 /*
@@ -2127,19 +1952,21 @@ int IsHex(char *token) {
  */
 int HexToInt(char *token) {
 
-	int i = strlen(token) - 1;
+	int len = (strlen(token) - 1);
 	int j = 0;
 	int digit = 0;
 	int sum = 0;
-	char aux = token[i];
+	char aux = token[len];
 
-	while ((i > 0) && (aux != 'X')) {
+	while ((len > 0) && (aux != 'X')) {
+		// if token[len] is between 0 and 9, obtain numeric value
 		if ((aux > 47) && (aux < 58)) digit = aux - 48;
+		// else if token[len] is between A and F, obtain numeric value
 		else if ((aux > 64) && (aux < 71)) digit = aux - 55;
-		sum+=(digit*(pow(16, j)));
-		i--;
+		sum+=(digit*(Power(16, j)));
+		len--;
 		j++;
-		aux = token[i];
+		aux = token[len];
 	}
 
 	if (token[0] == '-') sum *= -1;

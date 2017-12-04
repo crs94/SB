@@ -149,8 +149,9 @@ int IsLabel(char *token) {
 	}
 
 	while (token[++i] != '\0') {
-		/* A token is valid if it contains only
-		 * alphanumeric characters or underscores */
+
+		 /* A token is valid if it contains only
+		  * alphanumeric characters or underscores */
 		if((!isalnum(token[i])) && (token[i] != '_')) {
 			/* Return 0 if colon is found and it is not
 			 * at the last position in token */
@@ -159,9 +160,7 @@ int IsLabel(char *token) {
 			}
 		}
 	}
-	
-	/* A label is invalid if it is named like an
-	 * operation or directive */
+
 	if(!strcmp(token, "EQU:")) {
 		return 0;
 	}
@@ -171,7 +170,7 @@ int IsLabel(char *token) {
 	else if(!strcmp(token, "MACRO:")) {
 		return 0;
 	}
-	else if(!strcmp(token, "END:")) {
+	else if(!strcmp(token, "ENDMACRO:")) {
 		return 0;
 	}
 	else if(!strcmp(token, "SECTION:")) {
@@ -181,6 +180,18 @@ int IsLabel(char *token) {
 		return 0;
 	}
 	else if(!strcmp(token, "CONST:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "BEGIN:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "END:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "EXTERN:")) {
+		return 0;
+	}
+	else if(!strcmp(token, "PUBLIC:")) {
 		return 0;
 	}
 	else if(!strcmp(token, "ADD:")) {
@@ -234,7 +245,6 @@ int IsLabel(char *token) {
 		return 0;
 	}
 }
-
 /*
  * This function tests if token is valid
  * It is assumed it is not a label
