@@ -71,9 +71,7 @@ int main(int argc, char *argv[]) {
 
 	j = 0;
 	acc = 0;
-	printf("Simulating code\n");
 	for(j = 0; j<size; j++) {
-        printf("simulating %d\n", memory[j]);
 		switch(memory[j]) {
 			case 1:
 				j++;

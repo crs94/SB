@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
         if((p_str = strstr(output_file, ".asm")) != NULL) {
 	        *p_str = '\0';
     	}
-        printf("%s\n", output_file);
+        printf("Assembling %s\n", output_file);
 
         strcpy(pass_pre_out, output_file);
         strcat(pass_pre_out, ".pre");
@@ -219,10 +219,11 @@ int main(int argc, char *argv[]) {
         fclose(fp_in);
         fclose(fp_out);
 
-        /*if (errors != 0) {
+        if (errors != 0) {
             remove(pass_pre_out);
             remove(pass_one_out);
-        }*/
+        }
+
     }
 
     return errors;
@@ -513,7 +514,6 @@ int Preprocess(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *e
 	    */
 	    else modifyLines(*linesTable_Head, linec, 0);
     }
-printf("%s\n", line);
 
     /*
     * After its use during preprocess passage, the EQU
@@ -688,6 +688,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 											lineOut->op[opr_count] = tmp_sym->address;
 											// If the token is defined as extern
 				                            if (tmp_sym->type = 'E') {
+                                                flagEx++;
                                                 if (tmp_op->opcode == 9) {
                                                     AddUse(&tmp_sym->useTable, (lc[sec] - (2 - opr_count)));
                                                 }
@@ -976,7 +977,7 @@ int One_Pass(FILE *fin, FILE *fout, char *filename, struct fileLines **linesTabl
 											tmp_sym->type = 'E';
 											// Ensure that the label address is set to 0
 											tmp_sym->address = 0;
-											flagEx++;
+											//flagEx++;
 										}
 										else {
 											printf("Semantic error: Use of EXTERN symbol before definition\n", line_original);
@@ -1526,7 +1527,7 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node 
     }
     fprintf(fp, "\n");*/
     if(ext) {
-    	fprintf(fp, "U:");
+    	fprintf(fp, "U: %d",ext);
 		tmpSym = symtable;
 		while(tmpSym != NULL) {
 			if(tmpSym->type == 'E') {
@@ -1550,7 +1551,7 @@ void WriteObjectFile(FILE *fp, char *filename, int *size, struct sym_table_node 
     	tmpDef = tmpDef->next;
     }*/
     if(pub) {
-    	fprintf(fp, "D:");
+    	fprintf(fp, "D: %d",pub);
 		tmpSym = symtable;
 		while(tmpSym != NULL) {
 			if(tmpSym->type == 'P') {

@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
 		for(i = 0; i < tmp_tab->value; i++) {
 			tmp_list = tmp_list->next;
 		}
-		tmp_list->value += n;
+		tmp_list->value = n;
 		tmp_tab = tmp_tab->next;
 	}
 
