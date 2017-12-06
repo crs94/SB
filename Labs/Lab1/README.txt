@@ -10,6 +10,7 @@ Compilar com: gcc ASSEMBLER.c -o assembler -lm
 Modo de chamada: ./assembler -mode input_file output_file
 
 Se -mode é "-p" o programa realiza apenas a passagem de pré-processamento
+sobre input_file
 
 Se -mode é "-m" o programa realiza a passagem de pré-processamento 
 seguida pela passagem de expansão de macros e gera um arquivo intermediário

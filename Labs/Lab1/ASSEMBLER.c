@@ -582,7 +582,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 		                if((linePos = GetToken(line, token2, linePos))) {
 		                	if(!strcmp(token2, "MACRO")) {
 		                		if(sec != 1) {
-									printf("Pass Zero: ");
 									printf("Line %d. Warning: MACRO directive outside TEXT section.\n", lineo);
 								}
 			                	inMacro++;
@@ -591,21 +590,18 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 			                    modifyLines(*linesTable_Head, linec, 0);
 			                }
 			                else {
-			                	printf("Pass zero: ");
 			                	printf("Line %d. Sintatic error: Unexpected token %s\n", lineo, token2);
                     			(*error_count)++;
 			                }
 		                }
                     }
                     else {
-                    	printf("Pass zero: ");
                     	printf("Line %d. Sintatic error: invalid label.\n", lineo);
                     	(*error_count)++;
                     }
                 }
             }
             else {
-            	printf("Pass Zero: ");
             	printf("Line %d. Error: Nested MACRO.\n", lineo);
             	(*error_count)++;
             }
@@ -623,7 +619,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
 		    }
 		    else {
 		        linesTmp = searchLines(*linesTable_Head, linec);
-		        printf("Pass zero: ");
 		        printf("Line %d. Semantic error: END without MACRO.\n", lineo);
 		        (*error_count)++;
 		    }
@@ -691,7 +686,6 @@ int Pass_Zero(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *er
     }
     // If some MACRO was not finished by the end of the code
     if (inMacro) {
-    	printf("Pass zero: ");
     	printf("Semantic Error: MACRO is missing END.\n");
     	(*error_count)++;
     }
@@ -1144,7 +1138,6 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
 			free(lineOut);
 		}
     }
-    printf("lc1: %d; lc2: %d\n", lc[1], lc[2]);
     // Acusar erro se lc[1] = 0? (no section TEXT)
     //checar se há labels indefinidas na symTable antes?
     AdjustAdresses(symTable, lc[1]);
@@ -1152,14 +1145,10 @@ int One_Pass(FILE *fin, FILE *fout, struct fileLines **linesTable_Head, int *err
     i = 0;
     FinalErrorCheck(symTable, head_text, head_data, lc[1], &i);
     (*error_count) += i;
-    printf("Writing to object file\n");
     WriteObjectFile(fout, head_text, head_data);
-    printf("Deleting output lines\n");
     DeleteOutputLines(head_text);
     DeleteOutputLines(head_data);
-    printf("Deleting symbol table\n");
     DeleteSymTable(symTable);
-    printf("FINISHED!\n");
 
     return (*error_count);
 }
@@ -1356,27 +1345,20 @@ void ReplaceLists(struct sym_table_node *node, int *error) {
 
 	while(temp != NULL) {
 		tmp = temp->list;
-		printf("Replacing references for %s\n", temp->label);
 		while (tmp != NULL) {
-			printf("InWhile\n");
-			printf("Replacing %d with %d\n",*tmp->replace, (temp->address + tmp->offset));
 			if(tmp->offset <= temp->vector) {
 				(*tmp->replace) = (temp->address + tmp->offset);
-				printf("Replaced\n");
 			}
 			else {
 				(*tmp->replace) = temp->address;
-				printf("Error: offset too large in operand %s\n", temp->label);
 				(*error)++;
 			}
 		    tmp = tmp->next;
 		}
 
-		printf("Deleting list of replaces in node %s\n", temp->label);
 		while(temp->list != NULL) {
 			tmp = temp->list;
 			temp->list = temp->list->next;
-			printf("Deleting\n");
 			free(tmp);
 		}
 		temp = temp->next;
@@ -1393,7 +1375,6 @@ struct sym_table_node *SearchSym(struct sym_table_node *table, char *token) {
 	struct sym_table_node *tmp = table;
 
     while ((tmp != NULL)) {
-    	printf("Searching for %s. I'm here: %s\n",token,tmp->label);
         if (!strcmp(tmp->label, token)) {
         	return tmp;
         }
@@ -1468,11 +1449,9 @@ void DeleteOutputLines(struct output_line *first) {
 }
 
 void AdjustAdresses(struct sym_table_node *table, int lc_text) {
-	printf("Adjusting addresses\n");
 	struct sym_table_node *tmp = table;
 	while(tmp != NULL) {
 		if(tmp->sec == 2) {
-			printf("Adding %d to %d in node %s\n", (lc_text + 1), tmp->address, tmp->label);
 			tmp->address += (lc_text + 1);
 		}
 		tmp = tmp->next;
@@ -1481,7 +1460,6 @@ void AdjustAdresses(struct sym_table_node *table, int lc_text) {
 
 void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, struct output_line *data, int secText, int *error) {
 
-	printf("Checking errors\n");
 	struct sym_table_node *tmp = symtab;
 	struct output_line *temp = text;
 	struct output_line *temp2 = data;
@@ -1497,7 +1475,6 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 
 	while(temp != NULL) {
 
-		printf("Checking condition 1\n");
 		if((temp->opcode > 4) && (temp->opcode < 9)) {
 			if(temp->op[0] > i) {
 				printf("Line %d. Semantic error: Jump to invalid section\n", temp->line);
@@ -1506,7 +1483,6 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 		}
 		else {
 
-			printf("Checking condition 2\n");
 			if(((temp->opcode < 14) && (temp->opcode > 0) && (temp->op[0] < i)) ||
 				((temp->op[1] > -1) && (temp->op[1] < i))) {
 
@@ -1514,7 +1490,6 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 				(*error)++;
 			}
 
-			printf("Checking condition 6\n");
 			if(temp->opcode == 9) {
 				while((i < temp->op[1]) && (temp2 != NULL)) {
 					if(temp2->opcode == 15) {
@@ -1533,7 +1508,6 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 				temp2 = data;
 			}
 			else {
-				printf("Checking condition 5\n");
 				if((temp->opcode ==11) || (temp->opcode == 12)) {
 					while((i < temp->op[0]) && (temp2 != NULL)) {
 						if(temp2->opcode == 15) {
@@ -1552,7 +1526,6 @@ void FinalErrorCheck(struct sym_table_node *symtab, struct output_line *text, st
 					temp2 = data;
 				}
 				else {
-					printf("Checking condition 4\n");
 					if(temp->opcode == 4) {
 						while((i < temp->op[0]) && (temp2 != NULL)) {
 							if(temp2->opcode == 15) {
@@ -1712,7 +1685,6 @@ int GetToken(char *lineBuffer, char *tokenBuffer, int p) {
  * Alternative version of GetToken
  */
 int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
-	printf("In GetToken2\n");
 	int n = 0;
 	if (lineBuffer[(*p)] == '\n') return 0;
 
@@ -1722,7 +1694,6 @@ int GetToken2(char *lineBuffer, char *tokenBuffer, int *p) {
 		(*p)++;
 	}
 	tokenBuffer[n] = '\0';
-	printf("Token: %s\n", tokenBuffer);
 	if (lineBuffer[(*p)] != '\n') (*p)++;
 	return 1;
 }
